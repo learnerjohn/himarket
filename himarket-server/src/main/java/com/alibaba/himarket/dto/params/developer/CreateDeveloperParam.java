@@ -22,6 +22,7 @@ package com.alibaba.himarket.dto.params.developer;
 import com.alibaba.himarket.dto.converter.InputConverter;
 import com.alibaba.himarket.entity.Developer;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -36,6 +37,9 @@ public class CreateDeveloperParam implements InputConverter<Developer> {
 
     @NotBlank(message = "密码不能为空")
     @Size(min = 6, max = 32, message = "密码长度应为6-32位")
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[-_@$!%*#?&])[A-Za-z\\d-_@$!%*#?&]{6,32}$",
+            message = "密码必须包含字母、数字和特殊符号")
     private String password;
 
     @Size(max = 256, message = "头像url长度不能超过256个字符")

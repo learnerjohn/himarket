@@ -328,18 +328,18 @@ export default function Portals() {
             <div>
               1. 将 Portal 域名 A 记录解析到
               <code className="mx-2 px-2 py-1 bg-gray-100 rounded text-blue-600 font-mono font-semibold">
-                47.84.178.38
+                47.84.98.71
               </code>
             </div>
             <div>
               2. 直接访问
               <a
-                href="http://47.84.178.38"
+                href="http://47.84.98.71"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mx-1 text-blue-600 hover:text-blue-700 hover:underline transition-colors"
               >
-                http://47.84.178.38
+                http://47.84.98.71
               </a>
               可访问默认 Portal
             </div>
