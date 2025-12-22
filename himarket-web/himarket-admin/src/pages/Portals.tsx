@@ -12,6 +12,7 @@ import {
   Tooltip,
   Pagination,
   Skeleton,
+  Alert,
 } from "antd";
 import { PlusOutlined, MoreOutlined, LinkOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
@@ -318,6 +319,38 @@ export default function Portals() {
           创建 Portal
         </Button>
       </div>
+
+      {/* 域名解析提示 */}
+      <Alert
+        message={
+          <div className="space-y-1 text-gray-600">
+            <div>访问 Portal 的两种方式：</div>
+            <div>
+              1. 将 Portal 域名 A 记录解析到
+              <code className="mx-2 px-2 py-1 bg-gray-100 rounded text-blue-600 font-mono font-semibold">
+                47.84.178.38
+              </code>
+            </div>
+            <div>
+              2. 直接访问
+              <a
+                href="http://47.84.178.38"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-1 text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              >
+                http://47.84.178.38
+              </a>
+              可访问默认 Portal
+            </div>
+          </div>
+        }
+        type="info"
+        showIcon
+        closable
+        className="border-l-4 border-l-blue-500"
+      />
+
       {error && <div className="text-red-500">{error}</div>}
 
       {loading ? (

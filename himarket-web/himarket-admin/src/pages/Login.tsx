@@ -98,6 +98,10 @@ const Login: React.FC = () => {
             >
               <Input.Password placeholder="密码" size="large" />
             </Form.Item>
+            {/* 默认账号提示 */}
+            <div className="text-xs text-gray-400 text-center -mt-2 mb-2">
+              默认账号：admin / himarket-admin
+            </div>
             {error && <Alert message={error} type="error" showIcon className="mb-2" />}
             <Form.Item>
               <Button
