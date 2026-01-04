@@ -17,24 +17,35 @@
  * under the License.
  */
 
-package com.alibaba.himarket.support.chat.mcp;
+package com.alibaba.himarket.service.legacy;
 
-import com.alibaba.himarket.support.enums.MCPTransportMode;
-import java.util.Map;
-import lombok.Builder;
-import lombok.Data;
+import com.alibaba.himarket.dto.result.chat.ChatAnswerMessage;
+import com.alibaba.himarket.dto.result.chat.LlmInvokeResult;
+import com.alibaba.himarket.support.enums.AIProtocol;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.function.Consumer;
+import reactor.core.publisher.Flux;
 
-@Data
-@Builder
-public class MCPTransportConfig {
+@Deprecated
+public interface LlmServiceLegacy {
 
-    private String mcpServerName;
+    /**
+     * Chat with LLM
+     *
+     * @param param
+     * @param response
+     * @param resultHandler
+     * @return
+     */
+    Flux<ChatAnswerMessage> invokeLLM(
+            InvokeModelParamLegacy param,
+            HttpServletResponse response,
+            Consumer<LlmInvokeResult> resultHandler);
 
-    private MCPTransportMode transportMode;
-
-    private String url;
-
-    private Map<String, String> headers;
-
-    private Map<String, String> queryParams;
+    /**
+     * Supported protocol
+     *
+     * @return
+     */
+    AIProtocol getProtocol();
 }

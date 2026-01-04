@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.impl;
+package com.alibaba.himarket.service.legacy;
 
 import static com.alibaba.himarket.dto.result.chat.ChatAnswerMessage.MessageType;
 import static com.alibaba.himarket.dto.result.chat.ChatAnswerMessage.MessageType.*;
@@ -29,17 +29,14 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.core.exception.ChatError;
 import com.alibaba.himarket.core.exception.ErrorCode;
-import com.alibaba.himarket.dto.params.chat.ChatContext;
-import com.alibaba.himarket.dto.params.chat.InvokeModelParam;
 import com.alibaba.himarket.dto.params.chat.McpToolMeta;
 import com.alibaba.himarket.dto.params.chat.ToolContext;
 import com.alibaba.himarket.dto.result.chat.ChatAnswerMessage;
-import com.alibaba.himarket.dto.result.chat.LlmChatRequest;
+import com.alibaba.himarket.dto.result.chat.LlmChatRequestLegacy;
 import com.alibaba.himarket.dto.result.chat.LlmInvokeResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
 import com.alibaba.himarket.dto.result.model.ModelConfigResult;
 import com.alibaba.himarket.dto.result.product.ProductResult;
-import com.alibaba.himarket.service.LlmService;
 import com.alibaba.himarket.support.chat.ChatMessage;
 import com.alibaba.himarket.support.chat.ChatUsage;
 import com.alibaba.himarket.support.enums.ChatRole;
@@ -73,7 +70,8 @@ import reactor.core.publisher.Flux;
 
 @Slf4j
 @RequiredArgsConstructor
-public abstract class AbstractLlmService implements LlmService {
+@Deprecated
+public abstract class AbstractLlmServiceLegacy implements LlmServiceLegacy {
 
     protected final ToolCallingManager toolCallingManager;
 
@@ -90,12 +88,12 @@ public abstract class AbstractLlmService implements LlmService {
      */
     @Override
     public Flux<ChatAnswerMessage> invokeLLM(
-            InvokeModelParam param,
+            InvokeModelParamLegacy param,
             HttpServletResponse response,
             Consumer<LlmInvokeResult> resultHandler) {
         // ResultHandler is mainly used to record answer and usage
         try {
-            LlmChatRequest request = composeRequest(param);
+            LlmChatRequestLegacy request = composeRequest(param);
 
             return call(request, resultHandler);
         } catch (Exception e) {
@@ -116,10 +114,10 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> call(
-            LlmChatRequest request, Consumer<LlmInvokeResult> resultHandler) {
+            LlmChatRequestLegacy request, Consumer<LlmInvokeResult> resultHandler) {
         request.tryResolveDns();
 
-        ChatContext chatContext = initChatContext(request);
+        ChatContextLegacy chatContext = initChatContext(request);
         chatContext.start();
 
         Flux<ChatAnswerMessage> resp =
@@ -173,11 +171,7 @@ public abstract class AbstractLlmService implements LlmService {
                         .doOnComplete(() -> resultHandler.accept(LlmInvokeResult.of(chatContext)));
 
         return applyErrorHandling(resp, chatContext, resultHandler)
-                .doFinally(
-                        s -> {
-                            chatContext.stop();
-                            chatContext.close();
-                        });
+                .doFinally(s -> chatContext.stop());
     }
 
     /**
@@ -186,7 +180,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @param request
      * @return
      */
-    private ChatContext initChatContext(LlmChatRequest request) {
+    private ChatContextLegacy initChatContext(LlmChatRequestLegacy request) {
         Map<McpToolMeta, ToolCallback> toolsMap = new HashMap<>();
         List<McpClientWrapper> mcpClientWrappers = new ArrayList<>();
 
@@ -252,7 +246,7 @@ public abstract class AbstractLlmService implements LlmService {
 
         List<Message> messages = transformMessages(request.getChatMessages());
 
-        return ChatContext.builder()
+        return ChatContextLegacy.builder()
                 .chatId(request.getChatId())
                 .messages(messages)
                 .chatClient(chatClient)
@@ -268,7 +262,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @param param
      * @return
      */
-    private LlmChatRequest composeRequest(InvokeModelParam param) {
+    private LlmChatRequestLegacy composeRequest(InvokeModelParamLegacy param) {
         // Not be null
         ProductResult product = param.getProduct();
         ModelConfigResult modelConfig = product.getModelConfig();
@@ -287,7 +281,7 @@ public abstract class AbstractLlmService implements LlmService {
                         ? new WebSearchOptions(WebSearchOptions.SearchContextSize.MEDIUM, null)
                         : null;
 
-        return LlmChatRequest.builder()
+        return LlmChatRequestLegacy.builder()
                 .chatId(param.getChatId())
                 .userQuestion(param.getUserQuestion())
                 .uri(uri)
@@ -335,7 +329,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> streamToolCalls(
-            ChatContext chatContext,
+            ChatContextLegacy chatContext,
             ChatResponse chatResponse,
             Consumer<LlmInvokeResult> resultHandler) {
         Usage usage = chatResponse.getMetadata().getUsage();
@@ -475,7 +469,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> streamAnswer(
-            ChatResponse chatResponse, ChatContext chatContext) {
+            ChatResponse chatResponse, ChatContextLegacy chatContext) {
         Usage usage = chatResponse.getMetadata().getUsage();
         return Flux.fromIterable(chatResponse.getResults())
                 .map(
@@ -503,7 +497,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> continueNextCall(
-            ChatContext chatContext, Consumer<LlmInvokeResult> resultHandler) {
+            ChatContextLegacy chatContext, Consumer<LlmInvokeResult> resultHandler) {
 
         ChatOptions chatOptions = chatContext.getChatOptions();
         return Flux.defer(
@@ -544,7 +538,7 @@ public abstract class AbstractLlmService implements LlmService {
      */
     private Flux<ChatAnswerMessage> applyErrorHandling(
             Flux<ChatAnswerMessage> flux,
-            ChatContext chatContext,
+            ChatContextLegacy chatContext,
             Consumer<LlmInvokeResult> resultHandler) {
         String chatId = chatContext.getChatId();
 
@@ -585,7 +579,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> buildToolCallMessages(
-            List<AssistantMessage.ToolCall> toolCalls, Usage usage, ChatContext chatContext) {
+            List<AssistantMessage.ToolCall> toolCalls, Usage usage, ChatContextLegacy chatContext) {
         return Flux.fromIterable(toolCalls)
                 .map(
                         toolCall -> {
@@ -623,7 +617,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private Flux<ChatAnswerMessage> executeToolCalls(
-            Usage usage, ChatContext chatContext, ChatResponse chatResponse) {
+            Usage usage, ChatContextLegacy chatContext, ChatResponse chatResponse) {
         return Flux.defer(
                 () -> {
                     Stopwatch stopwatch = Stopwatch.createUnstarted();
@@ -695,7 +689,7 @@ public abstract class AbstractLlmService implements LlmService {
      * @return
      */
     private ChatAnswerMessage newChatAnswerMessage(
-            Usage usage, Object content, MessageType messageType, ChatContext chatContext) {
+            Usage usage, Object content, MessageType messageType, ChatContextLegacy chatContext) {
         // Append to answer content
         if (messageType == ANSWER && content instanceof String strContent) {
             chatContext.appendAnswer(strContent);
@@ -705,8 +699,8 @@ public abstract class AbstractLlmService implements LlmService {
                 (usage != null && !(usage instanceof EmptyUsage))
                         ? ChatUsage.builder()
                                 .firstByteTimeout(chatContext.getFirstByteTimeout())
-                                .promptTokens(usage.getPromptTokens())
-                                .completionTokens(usage.getCompletionTokens())
+                                .inputTokens(usage.getPromptTokens())
+                                .outputTokens(usage.getCompletionTokens())
                                 .totalTokens(usage.getTotalTokens())
                                 .build()
                         : null;
@@ -791,5 +785,5 @@ public abstract class AbstractLlmService implements LlmService {
      * @param request
      * @return
      */
-    protected abstract ChatClient newChatClient(LlmChatRequest request);
+    protected abstract ChatClient newChatClient(LlmChatRequestLegacy request);
 }

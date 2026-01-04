@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package com.alibaba.himarket.core.event;
 
-package com.alibaba.himarket.support.chat.mcp;
-
-import com.alibaba.himarket.support.enums.MCPTransportMode;
-import java.util.Map;
-import lombok.Builder;
+import com.alibaba.himarket.service.hichat.manager.ToolManager;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-@Builder
-public class MCPTransportConfig {
+@AllArgsConstructor
+public class McpClientRemovedEvent {
 
-    private String mcpServerName;
-
-    private MCPTransportMode transportMode;
-
-    private String url;
-
-    private Map<String, String> headers;
-
-    private Map<String, String> queryParams;
+    /**
+     * The cache key of the removed MCP client, see {@link ToolManager}
+     */
+    private final String mcpCacheKey;
 }

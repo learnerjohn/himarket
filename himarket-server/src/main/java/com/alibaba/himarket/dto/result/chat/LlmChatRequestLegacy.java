@@ -37,7 +37,7 @@ import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest.WebSear
 @Data
 @Builder
 @Slf4j
-public class LlmChatRequest {
+public class LlmChatRequestLegacy {
 
     /**
      * The unique chatId

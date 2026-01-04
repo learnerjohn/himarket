@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.impl;
+package com.alibaba.himarket.service.legacy;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.collection.CollUtil;
@@ -31,7 +31,6 @@ import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.CacheUtil;
 import com.alibaba.himarket.core.utils.IdGenerator;
 import com.alibaba.himarket.dto.params.chat.CreateChatParam;
-import com.alibaba.himarket.dto.params.chat.InvokeModelParam;
 import com.alibaba.himarket.dto.result.chat.ChatAnswerMessage;
 import com.alibaba.himarket.dto.result.chat.LlmInvokeResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
@@ -70,11 +69,12 @@ import reactor.core.publisher.Flux;
 @Service
 @Slf4j
 @AllArgsConstructor
-public class ChatServiceImpl implements ChatService {
+@Deprecated
+public class ChatServiceImplLegacy implements ChatServiceLegacy {
 
     private final ChatSessionService sessionService;
 
-    private final LlmService llmService;
+    private final LlmServiceLegacy llmServiceLegacy;
 
     private final ChatRepository chatRepository;
 
@@ -106,11 +106,12 @@ public class ChatServiceImpl implements ChatService {
 
         List<ChatMessage> chatMessages = mergeAndTruncateMessages(currentMessage, historyMessages);
 
-        InvokeModelParam invokeModelParam = buildInvokeModelParam(param, chatMessages, chat);
+        InvokeModelParamLegacy invokeModelParamLegacy =
+                buildInvokeModelParam(param, chatMessages, chat);
 
         // Invoke LLM
-        return llmService.invokeLLM(
-                invokeModelParam, response, r -> updateChatResult(chat.getChatId(), r));
+        return llmServiceLegacy.invokeLLM(
+                invokeModelParamLegacy, response, r -> updateChatResult(chat.getChatId(), r));
     }
 
     private Chat createChat(CreateChatParam param) {
@@ -356,7 +357,7 @@ public class ChatServiceImpl implements ChatService {
         return messages;
     }
 
-    private InvokeModelParam buildInvokeModelParam(
+    private InvokeModelParamLegacy buildInvokeModelParam(
             CreateChatParam param, List<ChatMessage> chatMessages, Chat chat) {
         // Get product config
         ProductResult productResult = productService.getProduct(param.getProductId());
@@ -370,7 +371,7 @@ public class ChatServiceImpl implements ChatService {
         CredentialContext credentialContext =
                 consumerService.getDefaultCredential(contextHolder.getUser());
 
-        return InvokeModelParam.builder()
+        return InvokeModelParamLegacy.builder()
                 .chatId(chat.getChatId())
                 .userQuestion(param.getQuestion())
                 .product(productResult)

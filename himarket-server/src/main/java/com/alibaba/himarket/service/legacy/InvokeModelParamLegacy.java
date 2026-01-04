@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.himarket.dto.params.chat;
+package com.alibaba.himarket.service.legacy;
 
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
 import com.alibaba.himarket.dto.result.product.ProductResult;
@@ -30,7 +30,8 @@ import lombok.Data;
 
 @Data
 @Builder
-public class InvokeModelParam {
+@Deprecated
+public class InvokeModelParamLegacy {
 
     /** Unique ID */
     private String chatId;

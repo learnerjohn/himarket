@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.impl;
+package com.alibaba.himarket.service.legacy;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
-import com.alibaba.himarket.dto.result.chat.LlmChatRequest;
+import com.alibaba.himarket.dto.result.chat.LlmChatRequestLegacy;
 import com.alibaba.himarket.dto.result.common.DomainResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
 import com.alibaba.himarket.dto.result.httpapi.HttpRouteResult;
@@ -46,14 +46,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 @Slf4j
-public class OpenAILlmService extends AbstractLlmService {
+@Deprecated
+public class OpenAILlmServiceLegacy extends AbstractLlmServiceLegacy {
 
-    public OpenAILlmService(ToolCallingManager toolCallingManager) {
+    public OpenAILlmServiceLegacy(ToolCallingManager toolCallingManager) {
         super(toolCallingManager);
     }
 
     @Override
-    public ChatClient newChatClient(LlmChatRequest request) {
+    public ChatClient newChatClient(LlmChatRequestLegacy request) {
         MultiValueMap<String, String> headers = new HttpHeaders();
         Optional.ofNullable(request.getHeaders())
                 .ifPresent(headerMap -> headerMap.forEach(headers::add));

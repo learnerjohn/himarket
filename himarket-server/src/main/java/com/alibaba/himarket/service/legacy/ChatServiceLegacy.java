@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.service.legacy;
 
 import com.alibaba.himarket.core.event.ChatSessionDeletingEvent;
 import com.alibaba.himarket.dto.params.chat.CreateChatParam;
@@ -25,7 +25,8 @@ import com.alibaba.himarket.dto.result.chat.ChatAnswerMessage;
 import jakarta.servlet.http.HttpServletResponse;
 import reactor.core.publisher.Flux;
 
-public interface ChatService {
+@Deprecated
+public interface ChatServiceLegacy {
 
     /**
      * Perform a chat

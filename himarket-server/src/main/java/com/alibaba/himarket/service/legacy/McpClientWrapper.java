@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.alibaba.himarket.service.impl;
+package com.alibaba.himarket.service.legacy;
 
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Data
 @Slf4j
+@Deprecated
 public class McpClientWrapper implements Closeable {
 
     private McpSyncClient mcpSyncClient;

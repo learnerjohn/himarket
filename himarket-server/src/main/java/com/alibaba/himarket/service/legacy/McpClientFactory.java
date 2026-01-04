@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.impl;
+package com.alibaba.himarket.service.legacy;
 
 import cn.hutool.core.map.MapUtil;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
@@ -38,6 +38,7 @@ import org.apache.commons.collections.MapUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
+@Deprecated
 public class McpClientFactory {
 
     public static McpClientWrapper newClient(

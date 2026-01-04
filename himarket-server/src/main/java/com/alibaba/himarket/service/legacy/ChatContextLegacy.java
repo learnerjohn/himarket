@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package com.alibaba.himarket.dto.params.chat;
+package com.alibaba.himarket.service.legacy;
 
 import cn.hutool.core.collection.CollUtil;
-import com.alibaba.himarket.service.impl.McpClientWrapper;
+import com.alibaba.himarket.dto.params.chat.ToolContext;
 import com.alibaba.himarket.support.chat.ChatUsage;
 import com.google.common.base.Stopwatch;
 import java.io.IOException;
@@ -34,7 +34,8 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 @Data
 @Builder
 @Slf4j
-public class ChatContext {
+@Deprecated
+public class ChatContextLegacy {
 
     // region Chat Result - Fields for storing chat response and metrics
     private String chatId;
@@ -87,17 +88,7 @@ public class ChatContext {
                 chatUsage.setFirstByteTimeout(firstByteTimeout);
             }
         }
-    }
 
-    public void appendAnswer(String content) {
-        answerContent.append(content);
-    }
-
-    public int nextRound() {
-        return ++round;
-    }
-
-    public void close() {
         if (CollUtil.isNotEmpty(mcpClientWrappers)) {
             mcpClientWrappers.forEach(
                     mcpClientWrapper -> {
@@ -108,5 +99,13 @@ public class ChatContext {
                         }
                     });
         }
+    }
+
+    public void appendAnswer(String content) {
+        answerContent.append(content);
+    }
+
+    public int nextRound() {
+        return ++round;
     }
 }
