@@ -9,6 +9,7 @@ export interface IAgentConfig {
     routes?: {
       domains: {
         domain: string;
+        port?: number;
         protocol: string;
         networkType: string;
       }[],
@@ -56,14 +57,14 @@ export interface IAgentConfig {
       }>;
       capabilities?: {
         streaming?: boolean;
-        [key: string]: any;
+        [key: string]: unknown;
       };
       additionalInterfaces?: Array<{
         transport: string;
         url: string;
-        [key: string]: any;
+        [key: string]: unknown;
       }>;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   };
   meta?: {  // 元数据信息
@@ -85,6 +86,7 @@ export interface IMCPConfig {
     path: string;
     domains: {
       domain: string;
+      port?: number;
       protocol: string;
       networkType: string;
     }[];
@@ -116,6 +118,7 @@ export interface IRoute {
 
 export interface IDomain {
   domain: string;
+  port?: number;
   protocol: string;
   networkType: string;
 }

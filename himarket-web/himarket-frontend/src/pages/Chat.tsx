@@ -154,7 +154,16 @@ function Chat() {
                       content,
                       createdAt: new Date().toDateString(),
                       activeAnswerIndex: 0,
-                      answers: [],
+                      answers: [
+                        {
+                          errorMsg: "",
+                          content: "",
+                          firstTokenTime: 0,
+                          totalTime: 0,
+                          inputTokens: 0,
+                          outputTokens: 0,
+                        }
+                      ],
                     }
                   ]
                 }
@@ -284,10 +293,10 @@ function Chat() {
                                 {
                                   errorMsg: question.answers?.[0]?.errorMsg,
                                   content: fullContent,
-                                  firstTokenTime: usage?.first_byte_timeout || 0,
-                                  totalTime: usage?.elapsed_time || 0,
-                                  inputTokens: usage?.prompt_tokens || 0,
-                                  outputTokens: usage?.completion_tokens || 0,
+                                  firstTokenTime: usage?.firstByteTimeout || 0,
+                                  totalTime: usage?.elapsedTime || 0,
+                                  inputTokens: usage?.inputTokens || 0,
+                                  outputTokens: usage?.outputTokens || 0,
                                 }
                               ]
                             }
@@ -562,10 +571,10 @@ function Chat() {
                             return {
                               errorMsg: answer.errorMsg,
                               content: fullContent,
-                              firstTokenTime: usage?.first_byte_timeout || 0,
-                              totalTime: usage?.elapsed_time || 0,
-                              inputTokens: usage?.prompt_tokens || 0,
-                              outputTokens: usage?.completion_tokens || 0,
+                              firstTokenTime: usage?.firstByteTimeout || 0,
+                              totalTime: usage?.elapsedTime || 0,
+                              inputTokens: usage?.inputTokens || 0,
+                              outputTokens: usage?.outputTokens || 0,
                             }
                           }
                           return answer;
@@ -617,7 +626,7 @@ function Chat() {
       })
     } catch (error) {
       setGenerating(false);
-      console.log(error)
+      console.error("Failed to generate message:", error)
     }
 
   };
@@ -709,10 +718,10 @@ function Chat() {
                         errorMsg: "",
                         content: answer.content,
                         usage: answer.usage,
-                        firstTokenTime: answer.usage?.first_byte_timeout || 0,
-                        totalTime: answer.usage?.elapsed_time || 0,
-                        inputTokens: answer.usage?.prompt_tokens || 0,
-                        outputTokens: answer.usage?.completion_tokens || 0,
+                        firstTokenTime: answer.usage?.firstByteTimeout || 0,
+                        totalTime: answer.usage?.elapsedTime || 0,
+                        inputTokens: answer.usage?.inputTokens || 0,
+                        outputTokens: answer.usage?.outputTokens || 0,
                       }
                     })
                   }

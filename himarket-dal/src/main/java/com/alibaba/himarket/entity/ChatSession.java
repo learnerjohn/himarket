@@ -22,8 +22,7 @@ package com.alibaba.himarket.entity;
 import com.alibaba.himarket.converter.ListJsonConverter;
 import jakarta.persistence.*;
 import java.util.List;
-import lombok.Data;
-import lombok.experimental.Accessors;
+import lombok.*;
 
 @Entity
 @Table(
@@ -34,26 +33,37 @@ import lombok.experimental.Accessors;
                     name = "uk_session_id")
         })
 @Data
-@Accessors(chain = true)
+@EqualsAndHashCode(callSuper = true)
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChatSession extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Session ID */
+    /**
+     * Session ID
+     */
     @Column(name = "session_id", nullable = false, unique = true, length = 64)
     private String sessionId;
 
-    /** User ID */
+    /**
+     * User ID
+     */
     @Column(name = "user_id", nullable = false, length = 64)
     private String userId;
 
-    /** Session name */
+    /**
+     * Session name
+     */
     @Column(name = "name", length = 255)
     private String name;
 
-    /** Product IDs, support multiple products */
+    /**
+     * Product IDs, support multiple products
+     */
     @Column(name = "products", length = 255)
     @Convert(converter = ListJsonConverter.class)
     private List<String> products;

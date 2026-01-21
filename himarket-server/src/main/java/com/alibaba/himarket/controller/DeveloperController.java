@@ -23,6 +23,7 @@ import com.alibaba.himarket.core.annotation.AdminAuth;
 import com.alibaba.himarket.core.annotation.DeveloperAuth;
 import com.alibaba.himarket.dto.params.admin.ResetPasswordParam;
 import com.alibaba.himarket.dto.params.developer.*;
+import com.alibaba.himarket.dto.params.login.LoginParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.common.PageResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
@@ -53,7 +54,7 @@ public class DeveloperController {
 
     @Operation(summary = "开发者登录", description = "开发者账号密码登录")
     @PostMapping("/login")
-    public AuthResult login(@Valid @RequestBody DeveloperLoginParam param) {
+    public AuthResult login(@Valid @RequestBody LoginParam param) {
         return developerService.login(param.getUsername(), param.getPassword());
     }
 
@@ -66,6 +67,7 @@ public class DeveloperController {
 
     @Operation(summary = "获取门户的开发者列表", description = "管理员功能：获取当前门户下所有开发者的分页列表")
     @GetMapping
+    @AdminAuth
     public PageResult<DeveloperResult> listDevelopers(
             QueryDeveloperParam param, Pageable pageable) {
         return developerService.listDevelopers(param, pageable);

@@ -20,10 +20,10 @@
 package com.alibaba.himarket.dto.params.nacos;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-/** 查询Nacos命名空间参数 */
+@EqualsAndHashCode(callSuper = true)
 @Data
 public class QueryNacosNamespaceParam extends CreateNacosParam {
-    /** runtime namespace to query on remote Nacos (not stored on instance) */
     private String namespace;
 }

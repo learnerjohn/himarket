@@ -27,7 +27,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ChatAttachmentRepository extends BaseRepository<ChatAttachment, Long> {
 
+    /**
+     * Find attachment by attachment ID
+     *
+     * @param attachmentId the attachment ID
+     * @return the chat attachment
+     */
     Optional<ChatAttachment> findByAttachmentId(String attachmentId);
 
+    /**
+     * Find attachments by attachment IDs
+     *
+     * @param attachmentIds the list of attachment IDs
+     * @return the list of chat attachments
+     */
     List<ChatAttachment> findByAttachmentIdIn(List<String> attachmentIds);
 }

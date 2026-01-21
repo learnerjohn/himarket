@@ -21,37 +21,43 @@ package com.alibaba.himarket.config;
 
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebMvcConfig {
+public class WebMvcConfig implements WebMvcConfigurer {
 
-    @Bean
-    public PageableHandlerMethodArgumentResolver pageableResolver() {
-        PageableHandlerMethodArgumentResolver resolver =
-                new PageableHandlerMethodArgumentResolver();
-        // 默认分页和排序
-        resolver.setFallbackPageable(
-                PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createAt")));
-        // 页码从1开始
-        resolver.setOneIndexedParameters(true);
-        return resolver;
+    @Override
+    public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+        // Create a thread pool for async handling
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+
+        configurer.setTaskExecutor(executor);
+        configurer.setDefaultTimeout(30000);
     }
 
-    @Bean
-    public WebMvcConfigurer webMvcConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addArgumentResolvers(
-                    @NotNull List<HandlerMethodArgumentResolver> resolvers) {
-                resolvers.add(pageableResolver());
-            }
-        };
+    @Override
+    public void addArgumentResolvers(@NotNull List<HandlerMethodArgumentResolver> resolvers) {
+        // Add pageable resolver
+        PageableHandlerMethodArgumentResolver resolver =
+                new PageableHandlerMethodArgumentResolver();
+        // Default page size is 100
+        resolver.setFallbackPageable(
+                PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createAt")));
+        // Page index starts from 1
+        resolver.setOneIndexedParameters(true);
+
+        resolvers.add(resolver);
     }
 }

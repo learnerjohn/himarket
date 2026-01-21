@@ -19,7 +19,6 @@
 
 package com.alibaba.himarket.service;
 
-import com.alibaba.himarket.core.event.PortalDeletingEvent;
 import com.alibaba.himarket.dto.params.product.*;
 import com.alibaba.himarket.dto.result.common.PageResult;
 import com.alibaba.himarket.dto.result.mcp.McpToolListResult;
@@ -125,21 +124,13 @@ public interface ProductService {
     void deleteProductRef(String productId);
 
     /**
-     * Clean up portal resources
-     *
-     * @param event
-     */
-    void handlePortalDeletion(PortalDeletingEvent event);
-
-    /**
      * Get API products, if withConfig is true, additional configuration information will be loaded
      * including categories, API config, MCP config, agent config and model config
      *
      * @param productIds
-     * @param withConfig
      * @return
      */
-    Map<String, ProductResult> getProducts(List<String> productIds, boolean withConfig);
+    Map<String, ProductResult> getProducts(List<String> productIds);
 
     /**
      * Get API product subscription information

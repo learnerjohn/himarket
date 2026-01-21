@@ -21,9 +21,7 @@ package com.alibaba.himarket.controller;
 
 import com.alibaba.himarket.core.annotation.AdminOrDeveloperAuth;
 import com.alibaba.himarket.dto.params.chat.CreateChatParam;
-import com.alibaba.himarket.dto.result.chat.ChatAnswerMessage;
-import com.alibaba.himarket.service.ChatService;
-import jakarta.servlet.http.HttpServletResponse;
+import com.alibaba.himarket.service.hichat.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +31,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.scheduler.Schedulers;
 
 @RestController
 @RequestMapping("/chats")
@@ -46,8 +45,25 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ChatAnswerMessage> chat(
-            @Valid @RequestBody CreateChatParam param, HttpServletResponse response) {
-        return chatService.chat(param, response);
+    public SseEmitter chat(@Valid @RequestBody CreateChatParam param) {
+        // Use SseEmitter for streaming
+        SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
+
+        chatService
+                .chat(param)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        event -> {
+                            try {
+                                emitter.send(event);
+                            } catch (Exception e) {
+                                log.error("Failed to send event", e);
+                                emitter.completeWithError(e);
+                            }
+                        },
+                        emitter::completeWithError,
+                        emitter::complete);
+
+        return emitter;
     }
 }

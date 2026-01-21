@@ -22,14 +22,18 @@ package com.alibaba.himarket.core.utils;
 import cn.hutool.core.lang.ObjectId;
 
 /**
- * ID生成器
+ * ID Generator
  *
- * <p>格式为: prefix + 24位字符串
+ * <p>Format: prefix + 24-char string
  *
- * <p>支持的ID类型: - 门户ID: portal-xxxxxx - API产品ID: api-xxxxxx - 开发者ID: dev-xxxxxx - 管理员ID: admin-xxxxxx
- * - 产品类别ID: category-xxxxxx
+ * <p>Supported ID types:
+ * - Portal ID: portal-xxxxxx
+ * - API Product ID: product-xxxxxx
+ * - Developer ID: dev-xxxxxx
+ * - Administrator ID: admin-xxxxxx
+ * - Category ID: category-xxxxxx
  *
- * <p>注意: - API ID由网关同步，不在此生成
+ * <p>Note: - API ID is synced from gateway
  */
 public class IdGenerator {
 
@@ -44,6 +48,7 @@ public class IdGenerator {
 
     private static final String SESSION_PREFIX = "session-";
     private static final String CHAT_PREFIX = "chat-";
+    private static final String CHAT_ATTACHMENT_PREFIX = "attachment-";
     private static final String SUBSCRIPTION_PREFIX = "subscription-";
     private static final String PUBLICATION_PREFIX = "publication-";
 
@@ -97,5 +102,9 @@ public class IdGenerator {
 
     public static String genIdWithPrefix(String prefix) {
         return prefix + ObjectId.next();
+    }
+
+    public static String genChatAttachmentId() {
+        return CHAT_ATTACHMENT_PREFIX + ObjectId.next();
     }
 }
