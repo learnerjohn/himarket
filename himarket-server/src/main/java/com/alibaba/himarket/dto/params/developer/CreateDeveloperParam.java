@@ -36,12 +36,12 @@ public class CreateDeveloperParam implements InputConverter<Developer> {
     private String username;
 
     @NotBlank(message = "Password cannot be blank")
-    @Size(min = 6, max = 32, message = "Password must be between 6 and 32 characters")
+    @Size(min = 12, max = 32, message = "Password must be between 12 and 32 characters")
     @Pattern(
             regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[-_@$!%*#?&])[A-Za-z\\d-_@$!%*#?&]{6,32}$",
             message =
-                    "Password must be 6-32 characters long and contain letters, numbers and special"
-                            + " characters(-_@$!%*#?&)")
+                    "Password must be 12-32 characters long and contain letters, numbers and"
+                            + " special characters(-_@$!%*#?&)")
     private String password;
 
     @Size(max = 256, message = "Avatar URL cannot exceed 256 characters")
