@@ -1,4 +1,4 @@
-FROM apigateway-acr-registry.cn-chengdu.cr.aliyuncs.com/himarket/dragonwell:17-standard-ga-anolis
+FROM opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/dragonwell:17-standard-ga-anolis
 WORKDIR /app
 
 COPY target/*.jar app.jar
