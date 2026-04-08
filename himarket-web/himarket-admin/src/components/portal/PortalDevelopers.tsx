@@ -1,20 +1,19 @@
 import {
-  CheckOutlined,
-  UndoOutlined,
+  EditOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  EditOutlined,
+  EyeOutlined,
+  UnorderedListOutlined,
   CheckCircleFilled,
   ClockCircleOutlined,
 } from '@ant-design/icons';
-import { Button, Space, message, Modal, Tooltip } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { Table, Button, Space, message, Modal } from 'antd';
+import { useEffect, useState } from 'react';
 
-import { DataTable } from '@/components/common/DataTable';
 import { SubscriptionListModal } from '@/components/subscription/SubscriptionListModal';
 import { portalApi } from '@/lib/api';
-import { copyToClipboard, formatDateTime } from '@/lib/utils';
-import type { Portal, Developer, Consumer } from '@/types';
+import { formatDateTime } from '@/lib/utils';
+import type { ApiResponse, Consumer, Developer, PaginatedResponse, Portal } from '@/types';
 
 interface PortalDevelopersProps {
   portal: Portal;
@@ -35,7 +34,6 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
   const [consumers, setConsumers] = useState<Consumer[]>([]);
   const [consumerModalVisible, setConsumerModalVisible] = useState(false);
   const [currentDeveloper, setCurrentDeveloper] = useState<Developer | null>(null);
-  const [consumerSearchName, setConsumerSearchName] = useState('');
   const [consumerPagination, setConsumerPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -49,13 +47,16 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
   const [subscriptionModalVisible, setSubscriptionModalVisible] = useState(false);
   const [currentConsumer, setCurrentConsumer] = useState<Consumer | null>(null);
 
-  const { current: page, pageSize } = pagination;
+  useEffect(() => {
+    fetchDevelopers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portal.portalId, pagination.current, pagination.pageSize]);
 
-  const fetchDevelopers = useCallback(() => {
+  const fetchDevelopers = () => {
     portalApi
       .getDeveloperList(portal.portalId, {
-        page,
-        size: pageSize,
+        page: pagination.current, // 后端从0开始
+        size: pagination.pageSize,
       })
       .then((res) => {
         setDevelopers(res.data.content);
@@ -64,18 +65,14 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
           total: res.data.totalElements || 0,
         }));
       });
-  }, [page, pageSize, portal.portalId]);
-
-  useEffect(() => {
-    fetchDevelopers();
-  }, [fetchDevelopers]);
+  };
 
   const handleUpdateDeveloperStatus = (developerId: string, status: string) => {
     portalApi
       .updateDeveloperStatus(portal.portalId, developerId, status)
       .then(() => {
         if (status === 'PENDING') {
-          message.success('撤销成功');
+          message.success('取消授权成功');
         } else {
           message.success('审批成功');
         }
@@ -86,11 +83,11 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
       });
   };
 
-  const handleTableChange = (page: number, size?: number) => {
+  const handleTableChange = (paginationInfo: { current?: number; pageSize?: number }) => {
     setPagination((prev) => ({
       ...prev,
-      current: page,
-      pageSize: size ?? prev.pageSize,
+      current: paginationInfo.current ?? prev.current,
+      pageSize: paginationInfo.pageSize ?? prev.pageSize,
     }));
   };
 
@@ -120,47 +117,31 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
   const handleViewConsumers = (developer: Developer) => {
     setCurrentDeveloper(developer);
     setConsumerModalVisible(true);
-    setConsumerSearchName('');
     setConsumerPagination((prev) => ({ ...prev, current: 1 }));
-    fetchConsumers(developer.developerId, 1, consumerPagination.pageSize, '');
+    fetchConsumers(developer.developerId, 1, consumerPagination.pageSize);
   };
 
-  const fetchConsumers = (developerId: string, page: number, size: number, name?: string) => {
-    portalApi.getConsumerList(portal.portalId, developerId, { name, page, size }).then((res) => {
-      setConsumers(res.data.content || []);
+  const fetchConsumers = (developerId: string, page: number, size: number) => {
+    portalApi.getConsumerList(portal.portalId, developerId, { page: page, size }).then((res) => {
+      const body = res as unknown as ApiResponse<PaginatedResponse<Consumer>>;
+      setConsumers(body.data.content || []);
       setConsumerPagination((prev) => ({
         ...prev,
-        total: res.data.totalElements || 0,
+        total: body.data.totalElements || 0,
       }));
     });
   };
 
-  const handleConsumerTableChange = (page: number, size?: number) => {
-    if (currentDeveloper) {
-      setConsumerPagination((prev) => ({
-        ...prev,
-        current: page,
-        pageSize: size ?? prev.pageSize,
-      }));
-      fetchConsumers(
-        currentDeveloper.developerId,
-        page,
-        size ?? consumerPagination.pageSize,
-        consumerSearchName || undefined,
-      );
-    }
-  };
-
-  const handleConsumerSearch = () => {
-    if (currentDeveloper) {
-      setConsumerPagination((prev) => ({ ...prev, current: 1 }));
-      fetchConsumers(
-        currentDeveloper.developerId,
-        1,
-        consumerPagination.pageSize,
-        consumerSearchName || undefined,
-      );
-    }
+  const handleConsumerTableChange = (paginationInfo: { current?: number; pageSize?: number }) => {
+    if (!currentDeveloper) return;
+    const nextCurrent = paginationInfo.current ?? consumerPagination.current;
+    const nextPageSize = paginationInfo.pageSize ?? consumerPagination.pageSize;
+    setConsumerPagination((prev) => ({
+      ...prev,
+      current: nextCurrent,
+      pageSize: nextPageSize,
+    }));
+    fetchConsumers(currentDeveloper.developerId, nextCurrent, nextPageSize);
   };
 
   // 查看订阅列表
@@ -182,28 +163,8 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
       key: 'username',
       render: (username: string, record: Developer) => (
         <div className="ml-2">
-          <Tooltip placement="topLeft" title={username}>
-            <button
-              className="text-blue-600 hover:text-blue-500 font-medium cursor-pointer bg-transparent border-none p-0 truncate block max-w-[200px] text-left text-xs"
-              onClick={() => handleViewConsumers(record)}
-              type="button"
-            >
-              {username}
-            </button>
-          </Tooltip>
-          <Tooltip title="点击复制">
-            <button
-              className="text-xs text-gray-400 mt-0.5 truncate max-w-[200px] cursor-pointer hover:text-blue-500 bg-transparent border-none p-0 block text-left"
-              onClick={() =>
-                copyToClipboard(record.developerId).then(() => {
-                  message.success('已复制到剪贴板');
-                })
-              }
-              type="button"
-            >
-              {record.developerId}
-            </button>
-          </Tooltip>
+          <div className="font-medium">{username}</div>
+          <div className="text-sm text-gray-500">{record.developerId}</div>
         </div>
       ),
       title: '开发者名称/ID',
@@ -222,7 +183,7 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
           ) : (
             <>
               <ClockCircleOutlined className="text-orange-500 mr-2" style={{ fontSize: '10px' }} />
-              <span className="text-xs text-gray-900">待审批</span>
+              <span className="text-xs text-gray-900">待审核</span>
             </>
           )}
         </div>
@@ -244,22 +205,25 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
       key: 'action',
       render: (_: unknown, record: Developer) => (
         <Space size="middle">
+          <Button icon={<EyeOutlined />} onClick={() => handleViewConsumers(record)} type="link">
+            查看Consumer
+          </Button>
           {!portal.portalSettingConfig.autoApproveDevelopers &&
             (record.status === 'APPROVED' ? (
               <Button
-                icon={<UndoOutlined />}
+                icon={<EditOutlined />}
                 onClick={() => handleUpdateDeveloperStatus(record.developerId, 'PENDING')}
                 type="link"
               >
-                撤销
+                取消授权
               </Button>
             ) : (
               <Button
-                icon={<CheckOutlined />}
+                icon={<EditOutlined />}
                 onClick={() => handleUpdateDeveloperStatus(record.developerId, 'APPROVED')}
                 type="link"
               >
-                审批
+                审批通过
               </Button>
             ))}
           <Button
@@ -273,7 +237,7 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
         </Space>
       ),
       title: '操作',
-      width: 180,
+      width: 250,
     },
   ];
 
@@ -282,26 +246,14 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
     {
       dataIndex: 'name',
       key: 'name',
-      render: (name: string, record: Consumer) => (
-        <div>
-          <div className="text-sm font-medium text-gray-900 truncate">{name}</div>
-          <Tooltip title="点击复制">
-            <button
-              className="text-xs text-gray-400 mt-0.5 truncate max-w-[200px] cursor-pointer hover:text-blue-500 bg-transparent border-none p-0 block text-left"
-              onClick={() =>
-                copyToClipboard(record.consumerId).then(() => {
-                  message.success('已复制到剪贴板');
-                })
-              }
-              type="button"
-            >
-              {record.consumerId}
-            </button>
-          </Tooltip>
-        </div>
-      ),
-      title: 'Consumer名称/ID',
-      width: 280,
+      title: 'Consumer名称',
+      width: 200,
+    },
+    {
+      dataIndex: 'consumerId',
+      key: 'consumerId',
+      title: 'Consumer ID',
+      width: 200,
     },
     {
       dataIndex: 'description',
@@ -310,6 +262,15 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
       title: '描述',
       width: 200,
     },
+    // {
+    //   title: '状态',
+    //   dataIndex: 'status',
+    //   key: 'status',
+    //   width: 120,
+    //   render: (status: string) => (
+    //     <Badge status={status === 'APPROVED' ? 'success' : 'default'} text={status === 'APPROVED' ? '可用' : '待审核'} />
+    //   )
+    // },
     {
       dataIndex: 'createAt',
       key: 'createAt',
@@ -320,14 +281,14 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
     {
       key: 'action',
       render: (_: unknown, record: Consumer) => (
-        <Button
-          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 !px-2 text-xs"
-          icon={<EditOutlined />}
+        <button
+          className="text-colorPrimary/80 text-colorPrimary flex items-center gap-2 bg-transparent border-none p-0 cursor-pointer"
           onClick={() => handleViewSubscriptions(record)}
-          type="text"
+          type="button"
         >
-          管理订阅
-        </Button>
+          <UnorderedListOutlined />
+          订阅列表
+        </button>
       ),
       title: '操作',
       width: 120,
@@ -343,16 +304,16 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
         </div>
       </div>
 
-      <DataTable<Developer>
+      <Table
         columns={columns}
         dataSource={developers}
-        pagination={{
-          current: pagination.current,
-          onChange: handleTableChange,
-          pageSize: pagination.pageSize,
-          total: pagination.total,
-        }}
+        onChange={handleTableChange}
+        pagination={pagination}
         rowKey="developerId"
+        scroll={{
+          x: 'max-content',
+          y: 'calc(100vh - 400px)',
+        }}
       />
 
       {/* Consumer弹窗 */}
@@ -364,27 +325,13 @@ export function PortalDevelopers({ portal }: PortalDevelopersProps) {
         title={`查看Consumer - ${currentDeveloper?.username || ''}`}
         width={1000}
       >
-        <DataTable<Consumer>
+        <Table
           columns={consumerColumns}
           dataSource={consumers}
-          pagination={{
-            current: consumerPagination.current,
-            onChange: handleConsumerTableChange,
-            pageSize: consumerPagination.pageSize,
-            total: consumerPagination.total,
-          }}
+          onChange={handleConsumerTableChange}
+          pagination={consumerPagination}
           rowKey="consumerId"
-          search={{
-            onChange: (value) => {
-              setConsumerSearchName(value);
-              if (!value) {
-                handleConsumerSearch();
-              }
-            },
-            onSearch: handleConsumerSearch,
-            placeholder: '搜索Consumer名称',
-            value: consumerSearchName,
-          }}
+          scroll={{ y: 'calc(100vh - 400px)' }}
         />
       </Modal>
 
