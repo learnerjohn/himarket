@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# Run lint-staged (himarket-frontend)
+cd himarket-web/himarket-frontend && npx lint-staged --cwd .
+
+# Run lint-staged (himarket-admin)
+cd ../himarket-admin && npx lint-staged --cwd .

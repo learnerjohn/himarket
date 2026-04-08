@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# Type-check himarket-frontend
+cd himarket-web/himarket-frontend && npm run type-check
+
+# Type-check himarket-admin
+cd ../himarket-admin && npm run type-check
