@@ -82,6 +82,9 @@ jobs:
       - name: Type Check
         run: npm run type-check
 
+      - name: Run tests
+        run: npm run test
+
       - name: Build project
         run: npm run build
         env:
@@ -93,12 +96,12 @@ jobs:
             echo "❌ Build failed: dist directory does not exist"
             exit 1
           fi
-          
+
           if [ ! -f "dist/index.html" ]; then
             echo "❌ Build failed: dist/index.html does not exist"
             exit 1
           fi
-          
+
           echo "✅ Build artifacts verified"
 
       - name: Upload build artifacts
