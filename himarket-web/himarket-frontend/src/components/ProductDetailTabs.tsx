@@ -9,11 +9,35 @@ const PRODUCT_DETAIL_TABS_CARD_CLASS =
 const PRODUCT_DETAIL_TABS_NAV_CLASS =
   '[&_.ant-tabs-nav]:mb-5 [&_.ant-tabs-nav]:px-5 [&_.ant-tabs-tab]:py-4';
 
-const PRODUCT_DETAIL_TABS_CONTENT_CLASS =
-  '[&_.ant-tabs-content-holder]:px-5 [&_.ant-tabs-content-holder]:pb-5';
+const PRODUCT_DETAIL_TABS_CONTENT_CLASS = 'min-w-0 px-5 pb-5';
 
 function classNames(...values: Array<string | undefined>) {
   return values.filter(Boolean).join(' ');
+}
+
+function mergeContentClassName(
+  semanticClassNames: TabsProps['classNames'] | undefined,
+  contentPadded: boolean,
+): TabsProps['classNames'] | undefined {
+  if (!contentPadded) {
+    return semanticClassNames;
+  }
+
+  if (typeof semanticClassNames === 'function') {
+    return (info) => {
+      const resolvedClassNames = semanticClassNames(info) ?? {};
+
+      return {
+        ...resolvedClassNames,
+        content: classNames(PRODUCT_DETAIL_TABS_CONTENT_CLASS, resolvedClassNames.content),
+      };
+    };
+  }
+
+  return {
+    ...semanticClassNames,
+    content: classNames(PRODUCT_DETAIL_TABS_CONTENT_CLASS, semanticClassNames?.content),
+  };
 }
 
 interface ProductDetailTabLabelProps {
@@ -39,6 +63,7 @@ export function ProductDetailTabLabel({ children, icon }: ProductDetailTabLabelP
 
 export function ProductDetailTabs({
   cardClassName,
+  classNames: semanticClassNames,
   contentPadded = true,
   style,
   tabsClassName,
@@ -48,11 +73,8 @@ export function ProductDetailTabs({
     <div className={classNames(PRODUCT_DETAIL_TABS_CARD_CLASS, cardClassName)} style={style}>
       <Tabs
         {...tabsProps}
-        className={classNames(
-          PRODUCT_DETAIL_TABS_NAV_CLASS,
-          contentPadded ? PRODUCT_DETAIL_TABS_CONTENT_CLASS : undefined,
-          tabsClassName,
-        )}
+        className={classNames(PRODUCT_DETAIL_TABS_NAV_CLASS, tabsClassName)}
+        classNames={mergeContentClassName(semanticClassNames, contentPadded)}
         size="large"
       />
     </div>
