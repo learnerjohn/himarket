@@ -19,6 +19,7 @@
 package com.alibaba.himarket.service.hichat.support;
 
 import com.alibaba.himarket.support.chat.ChatUsage;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,7 +32,7 @@ import lombok.NoArgsConstructor;
  * <pre>
  * {
  *   "chatId": "chat-id",
- *   "type": "assistant|thinking|tool_call|tool_result|done|error",
+ *   "type": "ASSISTANT|THINKING|TOOL_CALL|TOOL_RESULT|DONE|ERROR",
  *   "content": ...,  // main content (varies by type)
  *   "usage": {...},  // token usage (optional)
  *   "error": "...",  // error code (optional)
@@ -77,8 +78,6 @@ public class ChatEvent {
 
     /**
      * Chunk type enumeration.
-     *
-     * <p>Serialized as lowercase with underscores in JSON (e.g., "assistant", "tool_call").
      */
     public enum EventType {
         /**
@@ -201,7 +200,7 @@ public class ChatEvent {
     }
 
     /**
-     * Tool call content structure (used in content field when type=tool_call)
+     * Tool call content structure (used in content field when type=TOOL_CALL)
      */
     @Data
     @NoArgsConstructor
@@ -221,16 +220,11 @@ public class ChatEvent {
         /**
          * Tool arguments (as JSON object)
          */
-        private Object arguments;
-
-        /**
-         * MCP server name (optional, identifies which MCP server provides this tool)
-         */
-        private String mcpServerName;
+        private Map<String, Object> arguments;
     }
 
     /**
-     * Tool result content structure (used in content field when type=tool_result)
+     * Tool result content structure (used in content field when type=TOOL_RESULT)
      */
     @Data
     @NoArgsConstructor

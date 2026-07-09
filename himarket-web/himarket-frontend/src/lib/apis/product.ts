@@ -49,6 +49,7 @@ export interface IProductDetail {
   feature?: {
     modelFeature: {
       model: string;
+      enableThinking?: boolean;
       webSearch: boolean;
       enableMultiModal: boolean;
     };

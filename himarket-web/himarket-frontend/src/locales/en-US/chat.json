@@ -22,6 +22,7 @@
     "dropArea": "Drop attachments here",
     "mcpExecuting": "MCP tool is running...",
     "placeholder": "Ask a question...",
+    "thinking": "Thinking",
     "webSearch": "Web"
   },
   "mcp": {
@@ -69,6 +70,7 @@
     "totalTime": "Total time",
     "inputTokens": "Input tokens",
     "outputTokens": "Output tokens",
+    "thinking": "Thinking process",
     "copy": "Copy",
     "regenerate": "Regenerate",
     "previousVersion": "Previous version",

@@ -28,7 +28,6 @@ import com.alibaba.himarket.service.hichat.support.ChatContext;
 import com.alibaba.himarket.service.hichat.support.ChatEvent;
 import com.alibaba.himarket.service.hichat.support.InvokeModelParam;
 import com.alibaba.himarket.service.hichat.support.LlmChatRequest;
-import com.alibaba.himarket.support.chat.ChatUsage;
 import com.alibaba.himarket.support.common.Strings;
 import com.alibaba.himarket.support.enums.AIProtocol;
 import com.alibaba.himarket.support.product.ModelFeature;
@@ -49,6 +48,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import reactor.core.publisher.Flux;
 
+/**
+ * Adapter for direct DashScope image model invocation.
+ */
 @Service
 @Slf4j
 public class DashScopeImageLlmService extends AbstractLlmService {
@@ -238,17 +240,10 @@ public class DashScopeImageLlmService extends AbstractLlmService {
 
         String chatId = chatContext.getChatId();
 
-        // Extract usage from response and set to context (similar to ChatFormatter.getUsage())
+        // Extract usage from response and add it to context.
         if (response.getUsage() != null) {
-            io.agentscope.core.model.ChatUsage u = response.getUsage();
-            ChatUsage usage =
-                    ChatUsage.builder()
-                            .inputTokens(u.getInputTokens())
-                            .outputTokens(u.getOutputTokens())
-                            .totalTokens(u.getTotalTokens())
-                            .build();
-
-            chatContext.setUsage(usage);
+            chatContext.accumulateTokenUsage(
+                    response.getUsage().getInputTokens(), response.getUsage().getOutputTokens());
         }
 
         // Process content (text and images)

@@ -68,7 +68,6 @@ public abstract class AbstractLlmService implements LlmService {
 
             Model chatModel = newChatModel(request);
             ChatBot chatBot = chatBotManager.getOrCreateChatBot(request, chatModel);
-            chatContext.setToolMetas(chatBot.getToolMetas());
 
             ChatFormatter formatter = new ChatFormatter();
 
@@ -80,8 +79,9 @@ public abstract class AbstractLlmService implements LlmService {
 
                             // Stream chat events with error handling
                             applyErrorHandling(
-                                    chatBot.chat(param.getUserMessage())
-                                            .flatMap(event -> formatter.format(event, chatContext))
+                                    chatBot.chat(param)
+                                            .concatMap(
+                                                    event -> formatter.format(event, chatContext))
                                             // Collect answer content
                                             .doOnNext(chatContext::collect),
                                     param.getChatId(),
@@ -172,9 +172,11 @@ public abstract class AbstractLlmService implements LlmService {
         return LlmChatRequest.builder()
                 .chatId(param.getChatId())
                 .sessionId(param.getSessionId())
+                .userId(param.getUserId())
                 .product(product)
                 .userMessages(param.getUserMessage())
                 .historyMessages(param.getHistoryMessages())
+                .rebuildMemory(param.isRebuildMemory())
                 .apiKey(credentialContext.getApiKey())
                 // Clone headers and query params
                 .headers(credentialContext.copyHeaders())

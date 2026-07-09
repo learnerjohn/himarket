@@ -36,8 +36,8 @@ export interface IChatMessage {
     attachmentId: string;
   }[];
   stream?: boolean;
-  needMemory?: boolean;
   enableThinking?: boolean;
+  enableWebSearch?: boolean;
   searchType?: string;
 }
 
@@ -108,19 +108,12 @@ export interface IChatUsage {
 
 // ============ V2 版本数据结构 ============
 
-export interface IToolCallInfo {
-  id: string;
-  name: string;
-  arguments: unknown;
-  mcpServerName?: string;
-  result?: unknown;
-}
-
 export interface IAnswerV2 {
   sequence: number;
+  answerId?: string;
   content: string;
+  messageChunks?: string;
   usage?: IChatUsage;
-  toolCalls?: IToolCallInfo[];
 }
 
 export interface IQuestionV2 {

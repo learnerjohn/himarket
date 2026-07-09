@@ -1,4 +1,10 @@
-import { SendOutlined, FileImageOutlined, FileOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  BulbOutlined,
+  SendOutlined,
+  FileImageOutlined,
+  FileOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { Dropdown, message, Tooltip } from 'antd';
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,8 +25,11 @@ interface InputBoxProps {
   isMcpExecuting?: boolean;
   showWebSearch: boolean;
   webSearchEnabled: boolean;
+  showThinking: boolean;
+  thinkingEnabled: boolean;
   enableMultiModal?: boolean;
   onWebSearchEnable: (enabled: boolean) => void;
+  onThinkingEnable: (enabled: boolean) => void;
   onMcpClick?: () => void;
   onSendMessage: (content: string, attachments: IAttachment[]) => void;
   onStop?: () => void;
@@ -35,8 +44,11 @@ export function InputBox(props: InputBoxProps) {
     onMcpClick,
     onSendMessage,
     onStop,
+    onThinkingEnable,
     onWebSearchEnable,
+    showThinking,
     showWebSearch,
+    thinkingEnabled,
     webSearchEnabled,
   } = props;
   const { t } = useTranslation('chat');
@@ -254,6 +266,17 @@ export function InputBox(props: InputBoxProps) {
                 className={`w-4 h-4 ${webSearchEnabled ? 'fill-colorPrimary' : 'fill-subTitle'}`}
               />
               <span className="text-sm text-subTitle">{t('input.webSearch')}</span>
+            </ToolButton>
+          )}
+          {showThinking && (
+            <ToolButton
+              enabled={thinkingEnabled}
+              onClick={() => onThinkingEnable(!thinkingEnabled)}
+            >
+              <BulbOutlined
+                className={`text-base ${thinkingEnabled ? 'text-colorPrimary' : 'text-subTitle'}`}
+              />
+              <span className="text-sm text-subTitle">{t('input.thinking')}</span>
             </ToolButton>
           )}
           <ToolButton enabled={mcpEnabled} onClick={onMcpClick}>

@@ -46,7 +46,7 @@ public class OpenAILlmService extends AbstractLlmService {
                                         pathValue, pathType, aiProtocols));
         request.setUri(uri);
 
-        if (Boolean.TRUE.equals(param.getEnableWebSearch())) {
+        if (param.isEnableWebSearch()) {
             Map<String, Object> webSearchOptions =
                     JsonUtil.parse(
                             """

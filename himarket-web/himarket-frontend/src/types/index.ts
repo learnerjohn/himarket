@@ -361,16 +361,15 @@ export interface IMcpToolResponse {
   result?: unknown;
 }
 
-// 消息片段类型 - 用于按顺序展示消息内容和工具调用
-export type MessageChunkType = 'text' | 'tool_call' | 'tool_result';
+export type IChatMessageChunkType = 'ASSISTANT' | 'THINKING' | 'TOOL_CALL' | 'TOOL_RESULT';
 
-// 消息片段 - 按 SSE 事件顺序存储
-export interface IMessageChunk {
-  id: string;
-  type: MessageChunkType;
-  content?: string; // text 类型使用
-  toolCall?: IMcpToolCall; // tool_call 类型使用
-  toolResult?: IMcpToolResponse; // tool_result 类型使用
+export interface IChatMessageChunk {
+  type: IChatMessageChunkType;
+  content?: string;
+  id?: string;
+  name?: string;
+  arguments?: unknown;
+  result?: unknown;
 }
 
 export interface IModelConversation {
@@ -396,9 +395,9 @@ export interface IModelConversation {
         totalTime: number;
         inputTokens: number;
         outputTokens: number;
+        messageChunks?: IChatMessageChunk[];
         mcpToolCalls?: IMcpToolCall[];
         mcpToolResponses?: IMcpToolResponse[];
-        messageChunks?: IMessageChunk[]; // 按顺序的消息片段
       }[];
     }[];
   }[];

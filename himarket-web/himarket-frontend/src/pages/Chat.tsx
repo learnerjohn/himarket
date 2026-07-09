@@ -72,6 +72,7 @@ function Chat() {
     content: string,
     mcps: IProductDetail[],
     enableWebSearch: boolean,
+    enableThinking: boolean,
     modelMap: Map<string, IProductDetail>,
     attachments: IAttachment[] = [],
   ) => {
@@ -79,7 +80,15 @@ function Chat() {
       antdMessage.error(t('page.selectModelFirst'));
       return;
     }
-    await sendMessage(content, mcps, enableWebSearch, modelMap, selectedModel, attachments);
+    await sendMessage(
+      content,
+      mcps,
+      enableWebSearch,
+      enableThinking,
+      modelMap,
+      selectedModel,
+      attachments,
+    );
   };
 
   const handleGenerateMessage = async (params: {
@@ -89,6 +98,7 @@ function Chat() {
     content: string;
     mcps: IProductDetail[];
     enableWebSearch: boolean;
+    enableThinking?: boolean;
     modelMap: Map<string, IProductDetail>;
     attachments?: IAttachment[];
   }) => {

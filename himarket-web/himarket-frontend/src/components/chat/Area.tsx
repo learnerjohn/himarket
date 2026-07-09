@@ -40,6 +40,7 @@ interface ChatAreaProps {
     message: string,
     mcps: IProductDetail[],
     enableWebSearch: boolean,
+    enableThinking: boolean,
     modelMap: Map<string, IProductDetail>,
     attachments: IAttachment[],
   ) => void;
@@ -51,6 +52,7 @@ interface ChatAreaProps {
     content: string;
     mcps: IProductDetail[];
     enableWebSearch: boolean;
+    enableThinking?: boolean;
     modelMap: Map<string, IProductDetail>;
     attachments?: IAttachment[];
   }) => void;
@@ -104,6 +106,7 @@ export function ChatArea(props: ChatAreaProps) {
   });
 
   const [enableWebSearch, setEnableWebSearch] = useState(false);
+  const [enableThinking, setEnableThinking] = useState(false);
 
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
@@ -269,6 +272,15 @@ export function ChatArea(props: ChatAreaProps) {
     });
   }, [modelConversations, modelMap, selectedModel]);
 
+  const showThinking = useMemo(() => {
+    if (modelConversations.length === 0) {
+      return selectedModel?.feature?.modelFeature?.enableThinking || false;
+    }
+    return modelConversations.some((v) => {
+      return modelMap.get(v.id)?.feature?.modelFeature?.enableThinking || false;
+    });
+  }, [modelConversations, modelMap, selectedModel]);
+
   useEffect(() => {
     APIs.getPrimaryConsumer().then(({ data }) => {
       primaryConsumer.current = data;
@@ -387,6 +399,7 @@ export function ChatArea(props: ChatAreaProps) {
                       attachments: quest.attachments as IAttachment[],
                       content: quest.content,
                       conversationId: con.id,
+                      enableThinking,
                       enableWebSearch,
                       mcps: mcpEnabled ? addedMcps : [],
                       modelId: model.id,
@@ -464,11 +477,21 @@ export function ChatArea(props: ChatAreaProps) {
                 onMcpClick={toggleMcpModal}
                 onSendMessage={(c, a) => {
                   setAutoScrollEnabled(true);
-                  onSendMessage(c, mcpEnabled ? addedMcps : [], enableWebSearch, modelMap, a);
+                  onSendMessage(
+                    c,
+                    mcpEnabled ? addedMcps : [],
+                    enableWebSearch,
+                    enableThinking,
+                    modelMap,
+                    a,
+                  );
                 }}
                 onStop={onStop}
+                onThinkingEnable={setEnableThinking}
                 onWebSearchEnable={setEnableWebSearch}
+                showThinking={showThinking}
                 showWebSearch={showWebSearch}
+                thinkingEnabled={enableThinking}
                 webSearchEnabled={enableWebSearch}
               />
             </div>
@@ -477,7 +500,14 @@ export function ChatArea(props: ChatAreaProps) {
             <SuggestedQuestions
               onSelectQuestion={(c) => {
                 setAutoScrollEnabled(true);
-                onSendMessage(c, mcpEnabled ? addedMcps : [], enableWebSearch, modelMap, []);
+                onSendMessage(
+                  c,
+                  mcpEnabled ? addedMcps : [],
+                  enableWebSearch,
+                  enableThinking,
+                  modelMap,
+                  [],
+                );
               }}
             />
           </div>
@@ -494,11 +524,21 @@ export function ChatArea(props: ChatAreaProps) {
               onMcpClick={toggleMcpModal}
               onSendMessage={(c, a) => {
                 setAutoScrollEnabled(true);
-                onSendMessage(c, mcpEnabled ? addedMcps : [], enableWebSearch, modelMap, a);
+                onSendMessage(
+                  c,
+                  mcpEnabled ? addedMcps : [],
+                  enableWebSearch,
+                  enableThinking,
+                  modelMap,
+                  a,
+                );
               }}
               onStop={onStop}
+              onThinkingEnable={setEnableThinking}
               onWebSearchEnable={setEnableWebSearch}
+              showThinking={showThinking}
               showWebSearch={showWebSearch}
+              thinkingEnabled={enableThinking}
               webSearchEnabled={enableWebSearch}
             />
           </div>

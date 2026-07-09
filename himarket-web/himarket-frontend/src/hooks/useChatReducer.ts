@@ -1,5 +1,10 @@
 import type { IAttachment } from '../lib/apis';
-import type { IModelConversation, IMessageChunk, IMcpToolCall, IMcpToolResponse } from '../types';
+import type {
+  IChatMessageChunk,
+  IModelConversation,
+  IMcpToolCall,
+  IMcpToolResponse,
+} from '../types';
 
 // ============ Action Types ============
 
@@ -24,8 +29,17 @@ export type ChatAction =
         modelId: string;
         conversationId: string;
         questionId: string;
-        chunk: string;
         fullContent: string;
+        chunk: string;
+      };
+    }
+  | {
+      type: 'APPEND_THINKING';
+      payload: {
+        modelId: string;
+        conversationId: string;
+        questionId: string;
+        content: string;
       };
     }
   | {
@@ -111,9 +125,9 @@ export type ChatAction =
         modelId: string;
         conversationId: string;
         questionId: string;
-        chunk: string;
         fullContent: string;
         lastIdx: number;
+        chunk: string;
       };
     }
   | {
@@ -167,23 +181,26 @@ function updateQuestion(
   });
 }
 
-// ============ Helper: merge or create text chunk ============
-
-function mergeTextChunk(chunks: IMessageChunk[], textChunk: string): IMessageChunk[] {
-  const lastChunk = chunks[chunks.length - 1];
-  if (lastChunk && lastChunk.type === 'text') {
-    return chunks.map((c, i) =>
-      i === chunks.length - 1 ? { ...c, content: (c.content || '') + textChunk } : c,
-    );
+function appendMessageChunk(
+  chunks: IChatMessageChunk[] | undefined,
+  chunk: IChatMessageChunk,
+): IChatMessageChunk[] | undefined {
+  if ((chunk.type === 'ASSISTANT' || chunk.type === 'THINKING') && !chunk.content) {
+    return chunks;
   }
-  return [
-    ...chunks,
-    {
-      content: textChunk,
-      id: `chunk-text-${Date.now()}`,
-      type: 'text' as const,
-    },
-  ];
+
+  const next = [...(chunks || [])];
+  const last = next[next.length - 1];
+  if ((chunk.type === 'ASSISTANT' || chunk.type === 'THINKING') && last?.type === chunk.type) {
+    next[next.length - 1] = {
+      ...last,
+      content: `${last.content || ''}${chunk.content || ''}`,
+    };
+    return next;
+  }
+
+  next.push(chunk);
+  return next;
 }
 
 // ============ Reducer ============
@@ -218,6 +235,7 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
                 errorMsg: '',
                 firstTokenTime: 0,
                 inputTokens: 0,
+                messageChunks: [],
                 outputTokens: 0,
                 totalTime: 0,
               },
@@ -266,7 +284,10 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
                 ? {
                     ...answer,
                     content: fullContent,
-                    messageChunks: mergeTextChunk(answer.messageChunks || [], chunk),
+                    messageChunks: appendMessageChunk(answer.messageChunks, {
+                      content: chunk,
+                      type: 'ASSISTANT',
+                    }),
                   }
                 : answer,
             ),
@@ -276,13 +297,29 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
       );
     }
 
+    case 'APPEND_THINKING': {
+      const { content, conversationId, modelId, questionId } = action.payload;
+      return updateQuestion(state, modelId, conversationId, questionId, (question) => {
+        const lastIdx = question.answers.length - 1;
+        return {
+          ...question,
+          answers: question.answers.map((answer, idx) =>
+            idx === lastIdx
+              ? {
+                  ...answer,
+                  messageChunks: appendMessageChunk(answer.messageChunks, {
+                    content,
+                    type: 'THINKING',
+                  }),
+                }
+              : answer,
+          ),
+        };
+      });
+    }
+
     case 'ADD_TOOL_CALL': {
       const { conversationId, modelId, questionId, toolCall } = action.payload;
-      const toolCallChunk: IMessageChunk = {
-        id: `chunk-tc-${toolCall.id}`,
-        toolCall,
-        type: 'tool_call',
-      };
       return updateQuestion(state, modelId, conversationId, questionId, (question) => {
         const lastIdx = question.answers.length - 1;
         return {
@@ -292,7 +329,12 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
               ? {
                   ...answer,
                   mcpToolCalls: [...(answer.mcpToolCalls || []), toolCall],
-                  messageChunks: [...(answer.messageChunks || []), toolCallChunk],
+                  messageChunks: appendMessageChunk(answer.messageChunks, {
+                    arguments: toolCall.arguments,
+                    id: toolCall.id,
+                    name: toolCall.name,
+                    type: 'TOOL_CALL',
+                  }),
                 }
               : answer,
           ),
@@ -302,11 +344,6 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
 
     case 'ADD_TOOL_RESPONSE': {
       const { conversationId, modelId, questionId, toolResponse } = action.payload;
-      const toolResultChunk: IMessageChunk = {
-        id: `chunk-tr-${toolResponse.id}`,
-        toolResult: toolResponse,
-        type: 'tool_result',
-      };
       return updateQuestion(state, modelId, conversationId, questionId, (question) => {
         const lastIdx = question.answers.length - 1;
         return {
@@ -316,7 +353,12 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
               ? {
                   ...answer,
                   mcpToolResponses: [...(answer.mcpToolResponses || []), toolResponse],
-                  messageChunks: [...(answer.messageChunks || []), toolResultChunk],
+                  messageChunks: appendMessageChunk(answer.messageChunks, {
+                    id: toolResponse.id,
+                    name: toolResponse.name,
+                    result: toolResponse.result,
+                    type: 'TOOL_RESULT',
+                  }),
                 }
               : answer,
           ),
@@ -462,7 +504,10 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
                     : {
                         ...answer,
                         content: fullContent,
-                        messageChunks: mergeTextChunk(answer.messageChunks || [], chunk),
+                        messageChunks: appendMessageChunk(answer.messageChunks, {
+                          content: chunk,
+                          type: 'ASSISTANT',
+                        }),
                       },
                 )
               : [
@@ -472,7 +517,10 @@ export function chatReducer(state: IModelConversation[], action: ChatAction): IM
                     errorMsg: '',
                     firstTokenTime: 0,
                     inputTokens: 0,
-                    messageChunks: mergeTextChunk([], chunk),
+                    messageChunks: appendMessageChunk([], {
+                      content: chunk,
+                      type: 'ASSISTANT',
+                    }),
                     outputTokens: 0,
                     totalTime: 0,
                   },

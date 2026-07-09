@@ -22,6 +22,7 @@
     "dropArea": "拖放附件到此区域",
     "mcpExecuting": "MCP 工具执行中...",
     "placeholder": "输入您的问题...",
+    "thinking": "思考",
     "webSearch": "联网"
   },
   "mcp": {
@@ -69,6 +70,7 @@
     "totalTime": "总耗时",
     "inputTokens": "输入 Token",
     "outputTokens": "输出 Token",
+    "thinking": "思考过程",
     "copy": "复制",
     "regenerate": "重新生成",
     "previousVersion": "上一个版本",

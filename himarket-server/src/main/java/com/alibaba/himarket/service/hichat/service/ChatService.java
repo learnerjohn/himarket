@@ -37,6 +37,7 @@ import com.alibaba.himarket.repository.ChatRepository;
 import com.alibaba.himarket.service.ChatSessionService;
 import com.alibaba.himarket.service.ConsumerService;
 import com.alibaba.himarket.service.ProductService;
+import com.alibaba.himarket.service.hichat.memory.ChatMemoryAgentStateStore;
 import com.alibaba.himarket.service.hichat.support.ChatEvent;
 import com.alibaba.himarket.service.hichat.support.InvokeModelParam;
 import com.alibaba.himarket.support.chat.attachment.ChatAttachmentConfig;
@@ -58,9 +59,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -92,6 +93,8 @@ public class ChatService {
 
     private final ConsumerService consumerService;
 
+    private final ChatMemoryAgentStateStore chatMemoryAgentStateStore;
+
     public Flux<ChatEvent> chat(CreateChatParam param) {
         performAllChecks(param);
 
@@ -111,7 +114,7 @@ public class ChatService {
                             chat.setStatus(
                                     result.isSuccess() ? ChatStatus.SUCCESS : ChatStatus.FAILED);
                             chat.setChatUsage(result.getUsage());
-                            chat.setToolCalls(result.getToolCalls());
+                            chat.setMessageChunks(result.getMessageChunks());
                             chatRepository.save(chat);
                         });
     }
@@ -185,16 +188,25 @@ public class ChatService {
                 consumerService.getDefaultCredential(contextHolder.getUser());
 
         // Build user msg and history msg list which will be passed to model
-        List<Msg> historyMsgList = buildHistoryMsgList(param);
+        String userId = contextHolder.getUser();
+        boolean rebuildMemory = chat.getSequence() != null && chat.getSequence() > 1;
+        boolean memoryExists = chatMemoryAgentStateStore.exists(userId, param.getSessionId());
+        List<Msg> historyMsgList =
+                memoryExists && !rebuildMemory
+                        ? Collections.emptyList()
+                        : buildHistoryMsgList(param);
         Msg currentMsg = buildUserMsg(chat);
 
         return InvokeModelParam.builder()
                 .chatId(chat.getChatId())
                 .sessionId(param.getSessionId())
+                .userId(userId)
                 .userMessage(currentMsg)
                 .product(productResult)
                 .historyMessages(historyMsgList)
-                .enableWebSearch(param.getEnableWebSearch())
+                .enableWebSearch(param.isEnableWebSearch())
+                .enableThinking(param.isEnableThinking())
+                .rebuildMemory(rebuildMemory)
                 .gatewayId(gatewayId)
                 .mcpConfigs(buildMCPConfigs(param, credentialContext))
                 .credentialContext(credentialContext)
@@ -215,49 +227,23 @@ public class ChatService {
             return Collections.emptyList();
         }
 
-        // 2. Filter and group chats
-        Map<String, List<Chat>> chatGroups =
-                chats.stream()
-                        // Filter valid chats (must have both question and answer)
-                        .filter(
-                                chat ->
-                                        Strings.isNotBlank(chat.getQuestion())
-                                                && Strings.isNotBlank(chat.getAnswer()))
-                        // Exclude current conversation
-                        .filter(chat -> !param.getConversationId().equals(chat.getConversationId()))
-                        // Ensure same product
-                        .filter(chat -> Strings.equals(chat.getProductId(), param.getProductId()))
-                        .collect(Collectors.groupingBy(Chat::getConversationId));
+        // 2. Filter valid history chats and keep the latest answer for each question.
+        Map<String, Chat> latestChatMap = new LinkedHashMap<>();
+        chats.stream()
+                .filter(
+                        chat ->
+                                Strings.isNotBlank(chat.getQuestionId())
+                                        && Strings.isNotBlank(chat.getQuestion())
+                                        && Strings.isNotBlank(chat.getAnswer()))
+                // Exclude current question so retry/regenerate does not use its previous answer.
+                .filter(chat -> !Strings.equals(param.getQuestionId(), chat.getQuestionId()))
+                // Ensure same product
+                .filter(chat -> Strings.equals(chat.getProductId(), param.getProductId()))
+                .forEach(chat -> latestChatMap.put(chat.getQuestionId(), chat));
 
-        // 3. Get latest answer for each conversation
-        // Note: A conversation may have multiple chats for the same question (retries,
-        // regenerations)
-        // We need to find the latest question, then get its latest answer
+        // 3. Preserve chronological order for AgentScope memory rebuild.
         List<Chat> latestChats =
-                chatGroups.values().stream()
-                        .map(
-                                conversationChats -> {
-                                    // 3.1 Find the latest question ID
-                                    String latestQuestionId =
-                                            conversationChats.stream()
-                                                    .max(Comparator.comparing(Chat::getCreateAt))
-                                                    .map(Chat::getQuestionId)
-                                                    .orElse(null);
-
-                                    if (Strings.isBlank(latestQuestionId)) {
-                                        return null;
-                                    }
-
-                                    // 3.2 Get the latest answer for this question
-                                    return conversationChats.stream()
-                                            .filter(
-                                                    chat ->
-                                                            latestQuestionId.equals(
-                                                                    chat.getQuestionId()))
-                                            .max(Comparator.comparing(Chat::getCreateAt))
-                                            .orElse(null);
-                                })
-                        .filter(Objects::nonNull)
+                latestChatMap.values().stream()
                         .sorted(Comparator.comparing(Chat::getCreateAt))
                         .toList();
 
@@ -276,7 +262,7 @@ public class ChatService {
         messages = truncateMessages(messages);
 
         log.debug(
-                "Built AgentScope messages, messageCount={}, conversationCount={}, sessionId={}",
+                "Built AgentScope messages, messageCount={}, historyQuestionCount={}, sessionId={}",
                 messages.size(),
                 latestChats.size(),
                 param.getSessionId());
@@ -407,7 +393,7 @@ public class ChatService {
 
         List<McpTransportConfig> configs = new ArrayList<>();
         for (ProductResult product : productService.getProducts(param.getMcpProducts()).values()) {
-            if (product.getType() != ProductType.MCP_SERVER && product.getMcpConfig() == null) {
+            if (product.getType() != ProductType.MCP_SERVER || product.getMcpConfig() == null) {
                 continue;
             }
 
@@ -451,6 +437,7 @@ public class ChatService {
 
             // Delete all chat records
             chatRepository.deleteAllBySessionId(sessionId);
+            chatMemoryAgentStateStore.deleteBySessionId(sessionId);
 
             log.info("Cleaned chat records and attachments, sessionId={}", sessionId);
         } catch (Exception e) {

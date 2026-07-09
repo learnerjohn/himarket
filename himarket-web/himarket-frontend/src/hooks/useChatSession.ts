@@ -12,7 +12,12 @@ import { handleSSEStream } from '../lib/sse';
 import { generateConversationId, generateQuestionId } from '../lib/uuid';
 
 import type { SSEOptions } from '../lib/sse';
-import type { IModelConversation, IMcpToolCall, IMcpToolResponse } from '../types';
+import type {
+  IChatMessageChunk,
+  IModelConversation,
+  IMcpToolCall,
+  IMcpToolResponse,
+} from '../types';
 
 // ============ SSE Callbacks Factory ============
 
@@ -23,6 +28,99 @@ interface SSEContext {
   fullContentRef: { current: string };
   dispatch: React.Dispatch<ChatAction>;
   setIsMcpExecuting: (v: boolean) => void;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseMessageChunks(messageChunks?: string): {
+  messageChunks?: IChatMessageChunk[];
+  mcpToolCalls?: IMcpToolCall[];
+  mcpToolResponses?: IMcpToolResponse[];
+} {
+  if (!messageChunks) {
+    return {};
+  }
+
+  try {
+    const messages = JSON.parse(messageChunks);
+    if (!Array.isArray(messages)) {
+      return {};
+    }
+
+    const mcpToolCalls: IMcpToolCall[] = [];
+    const mcpToolResponses: IMcpToolResponse[] = [];
+    const orderedChunks: IChatMessageChunk[] = [];
+
+    for (const message of messages) {
+      if (!isRecord(message)) {
+        continue;
+      }
+
+      if (
+        (message.type === 'ASSISTANT' || message.type === 'THINKING') &&
+        typeof message.content === 'string'
+      ) {
+        orderedChunks.push({
+          content: message.content,
+          type: message.type,
+        });
+        continue;
+      }
+
+      if (
+        message.type === 'TOOL_CALL' &&
+        typeof message.id === 'string' &&
+        typeof message.name === 'string'
+      ) {
+        orderedChunks.push({
+          arguments: message.arguments,
+          id: message.id,
+          name: message.name,
+          type: 'TOOL_CALL',
+        });
+        mcpToolCalls.push({
+          arguments: toArgumentString(message.arguments),
+          id: message.id,
+          name: message.name,
+          type: 'function',
+        });
+        continue;
+      }
+
+      if (
+        message.type === 'TOOL_RESULT' &&
+        typeof message.id === 'string' &&
+        typeof message.name === 'string'
+      ) {
+        orderedChunks.push({
+          id: message.id,
+          name: message.name,
+          result: message.result,
+          type: 'TOOL_RESULT',
+        });
+        mcpToolResponses.push({
+          id: message.id,
+          name: message.name,
+          result: message.result ?? '',
+        });
+        continue;
+      }
+    }
+
+    return {
+      mcpToolCalls: mcpToolCalls.length > 0 ? mcpToolCalls : undefined,
+      mcpToolResponses: mcpToolResponses.length > 0 ? mcpToolResponses : undefined,
+      messageChunks: orderedChunks.length > 0 ? orderedChunks : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function toArgumentString(input: unknown): string {
+  return typeof input === 'string' ? input : JSON.stringify(input ?? {});
 }
 
 function createSSECallbacks(ctx: SSEContext): SSEOptions {
@@ -65,6 +163,17 @@ function createSSECallbacks(ctx: SSEContext): SSEOptions {
           questionId,
         },
         type: 'SEND_ERROR',
+      });
+    },
+    onThinking: (content: string) => {
+      dispatch({
+        payload: {
+          content,
+          conversationId,
+          modelId,
+          questionId,
+        },
+        type: 'APPEND_THINKING',
       });
     },
     onToolCall: (toolCall: IMcpToolCall) => {
@@ -140,6 +249,7 @@ export function useChatSession() {
       content: string,
       mcps: IProductDetail[],
       enableWebSearch: boolean,
+      enableThinking: boolean,
       modelMap: Map<string, IProductDetail>,
       selectedModel: IProductDetail,
       attachments: IAttachment[] = [],
@@ -178,12 +288,14 @@ export function useChatSession() {
           abortControllersRef.current.push(abortController);
 
           const isSupport = modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
+          const isThinkingSupport =
+            modelMap.get(modelId)?.feature?.modelFeature?.enableThinking || false;
           const messagePayload = {
             attachments: attachments.map((a) => ({ attachmentId: a.attachmentId })),
             conversationId,
+            enableThinking: enableThinking ? isThinkingSupport : false,
             enableWebSearch: enableWebSearch ? isSupport : false,
             mcpProducts: mcps.map((mcp) => mcp.productId),
-            needMemory: true,
             productId: modelId,
             question: content,
             questionId,
@@ -236,6 +348,7 @@ export function useChatSession() {
       attachments = [],
       content,
       conversationId,
+      enableThinking,
       enableWebSearch,
       mcps,
       modelId,
@@ -248,6 +361,7 @@ export function useChatSession() {
       content: string;
       mcps: IProductDetail[];
       enableWebSearch: boolean;
+      enableThinking?: boolean;
       modelMap: Map<string, IProductDetail>;
       attachments?: IAttachment[];
     }) => {
@@ -256,13 +370,15 @@ export function useChatSession() {
       abortControllersRef.current = [abortController];
 
       const isSupportWebSearch = modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
+      const isThinkingSupport =
+        modelMap.get(modelId)?.feature?.modelFeature?.enableThinking || false;
       try {
         const messagePayload = {
           attachments: attachments.map((a) => ({ attachmentId: a.attachmentId })),
           conversationId,
+          enableThinking: enableThinking ? isThinkingSupport : false,
           enableWebSearch: enableWebSearch ? isSupportWebSearch : false,
           mcpProducts: mcps.map((mcp) => mcp.productId),
-          needMemory: true,
           productId: modelId,
           question: content,
           questionId,
@@ -373,30 +489,18 @@ export function useChatSession() {
                 return {
                   activeAnswerIndex,
                   answers: question.answers.map((answer) => {
-                    const toolCalls = answer.toolCalls || [];
-
-                    const mcpToolCalls: IMcpToolCall[] = toolCalls.map((tc) => ({
-                      arguments:
-                        typeof tc.arguments === 'string'
-                          ? tc.arguments
-                          : JSON.stringify(tc.arguments),
-                      id: tc.id,
-                      mcpServerName: tc.mcpServerName,
-                      name: tc.name,
-                      type: 'function',
-                    }));
-
-                    const mcpToolResponses: IMcpToolResponse[] = toolCalls
-                      .filter((tc) => tc.result !== undefined && tc.result !== null)
-                      .map((tc) => ({ id: tc.id, name: tc.name, result: tc.result }));
+                    const { mcpToolCalls, mcpToolResponses, messageChunks } = parseMessageChunks(
+                      answer.messageChunks,
+                    );
 
                     return {
                       content: answer.content,
                       errorMsg: '',
                       firstTokenTime: answer.usage?.firstByteTimeout || 0,
                       inputTokens: answer.usage?.inputTokens || 0,
-                      mcpToolCalls: mcpToolCalls.length > 0 ? mcpToolCalls : undefined,
-                      mcpToolResponses: mcpToolResponses.length > 0 ? mcpToolResponses : undefined,
+                      mcpToolCalls,
+                      mcpToolResponses,
+                      messageChunks,
                       outputTokens: answer.usage?.outputTokens || 0,
                       totalTime: answer.usage?.elapsedTime || 0,
                     };
