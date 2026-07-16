@@ -21,6 +21,7 @@ package com.alibaba.himarket.service.hichat.service;
 import com.alibaba.himarket.core.exception.ChatError;
 import com.alibaba.himarket.core.utils.CacheUtil;
 import com.alibaba.himarket.dto.result.chat.LlmInvokeResult;
+import com.alibaba.himarket.dto.result.common.DomainResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
 import com.alibaba.himarket.dto.result.httpapi.HttpRouteResult;
 import com.alibaba.himarket.dto.result.model.ModelConfigResult;
@@ -177,6 +178,8 @@ public abstract class AbstractLlmService implements LlmService {
                 .userMessages(param.getUserMessage())
                 .historyMessages(param.getHistoryMessages())
                 .rebuildMemory(param.isRebuildMemory())
+                .enableThinking(param.isEnableThinking())
+                .enableWebSearch(param.isEnableWebSearch())
                 .apiKey(credentialContext.getApiKey())
                 // Clone headers and query params
                 .headers(credentialContext.copyHeaders())
@@ -203,13 +206,28 @@ public abstract class AbstractLlmService implements LlmService {
                 .streaming(modelFeature.getStreaming() != null ? modelFeature.getStreaming() : true)
                 .webSearch(
                         modelFeature.getWebSearch() != null ? modelFeature.getWebSearch() : false)
+                .enableThinking(modelFeature.getEnableThinking())
+                .enableMultiModal(modelFeature.getEnableMultiModal())
                 .build();
     }
 
     @Override
-    public boolean match(String protocol) {
-        return getProtocols().stream()
-                .anyMatch(p -> Strings.equalsIgnoreCase(p.getProtocol(), protocol));
+    public boolean match(ModelConfigResult.ModelAPIConfig modelAPIConfig) {
+        if (modelAPIConfig == null
+                || !Strings.equalsIgnoreCase(getModelCategory(), modelAPIConfig.getModelCategory())
+                || CollectionUtils.isEmpty(modelAPIConfig.getAiProtocols())) {
+            return false;
+        }
+
+        return modelAPIConfig.getAiProtocols().stream()
+                .anyMatch(
+                        protocol ->
+                                getProtocols().stream()
+                                        .anyMatch(
+                                                supported ->
+                                                        Strings.equalsIgnoreCase(
+                                                                supported.getProtocol(),
+                                                                protocol)));
     }
 
     /**
@@ -251,15 +269,14 @@ public abstract class AbstractLlmService implements LlmService {
                 org.springframework.web.util.UriComponentsBuilder.newInstance();
 
         // Try to get public domain first, fallback to first domain
-        com.alibaba.himarket.dto.result.common.DomainResult domain =
-                route.getDomains().stream()
-                        .filter(d -> !Strings.equalsIgnoreCase(d.getNetworkType(), "intranet"))
-                        .findFirst()
-                        .orElseGet(
-                                () ->
-                                        !CollectionUtils.isEmpty(route.getDomains())
-                                                ? route.getDomains().get(0)
-                                                : null);
+        DomainResult domain = null;
+        if (!CollectionUtils.isEmpty(route.getDomains())) {
+            domain =
+                    route.getDomains().stream()
+                            .filter(d -> !Strings.equalsIgnoreCase(d.getNetworkType(), "intranet"))
+                            .findFirst()
+                            .orElse(route.getDomains().get(0));
+        }
 
         if (domain != null) {
             String protocol =
@@ -302,5 +319,8 @@ public abstract class AbstractLlmService implements LlmService {
      * @param request request containing model config, credentials, and parameters
      * @return model instance (e.g. DashScopeChatModel, OpenAIChatModel)
      */
-    abstract Model newChatModel(LlmChatRequest request);
+    Model newChatModel(LlmChatRequest request) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + " does not use an AgentScope chat model");
+    }
 }

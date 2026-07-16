@@ -53,6 +53,17 @@ class ChatContent {
                 }
                 break;
 
+            case IMAGE:
+                if (event.getContent() instanceof ChatEvent.ImageContent image) {
+                    flushContentChunk();
+                    chunks.add(
+                            ChatMessageChunk.builder()
+                                    .type(event.getType())
+                                    .attachmentId(image.getAttachmentId())
+                                    .build());
+                }
+                break;
+
             case TOOL_CALL:
                 if (event.getContent() instanceof ChatEvent.ToolCallContent toolCall) {
                     flushContentChunk();
@@ -130,5 +141,6 @@ class ChatContent {
         private String name;
         private Map<String, Object> arguments;
         private Object result;
+        private String attachmentId;
     }
 }

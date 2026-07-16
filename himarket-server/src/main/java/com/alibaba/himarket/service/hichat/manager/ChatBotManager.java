@@ -483,6 +483,9 @@ public class ChatBotManager {
         // Product ID (for Product isolation)
         sb.append("product:").append(request.getProduct().getProductId()).append("|");
 
+        // Thinking mode changes the model instance configuration.
+        sb.append("thinking:").append(request.isEnableThinking()).append("|");
+
         // Model URL (scheme + host + port + path)
         if (request.getUri() != null) {
             sb.append("url:")

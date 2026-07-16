@@ -32,7 +32,7 @@ import lombok.NoArgsConstructor;
  * <pre>
  * {
  *   "chatId": "chat-id",
- *   "type": "ASSISTANT|THINKING|TOOL_CALL|TOOL_RESULT|DONE|ERROR",
+ *   "type": "ASSISTANT|THINKING|IMAGE|TOOL_CALL|TOOL_RESULT|DONE|ERROR",
  *   "content": ...,  // main content (varies by type)
  *   "usage": {...},  // token usage (optional)
  *   "error": "...",  // error code (optional)
@@ -96,6 +96,11 @@ public class ChatEvent {
         THINKING,
 
         /**
+         * Generated image
+         */
+        IMAGE,
+
+        /**
          * Tool call initiated
          */
         TOOL_CALL,
@@ -143,6 +148,16 @@ public class ChatEvent {
      */
     public static ChatEvent thinking(String chatId, String thought) {
         return ChatEvent.builder().chatId(chatId).type(EventType.THINKING).content(thought).build();
+    }
+
+    /**
+     * Create a generated image chunk
+     *
+     * @param chatId Conversation ID
+     * @param image generated image metadata
+     */
+    public static ChatEvent image(String chatId, ImageContent image) {
+        return ChatEvent.builder().chatId(chatId).type(EventType.IMAGE).content(image).build();
     }
 
     /**
@@ -221,6 +236,17 @@ public class ChatEvent {
          * Tool arguments (as JSON object)
          */
         private Map<String, Object> arguments;
+    }
+
+    /**
+     * Generated image content structure
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ImageContent {
+        private String attachmentId;
     }
 
     /**

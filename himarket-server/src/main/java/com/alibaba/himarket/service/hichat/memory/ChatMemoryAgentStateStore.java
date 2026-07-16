@@ -22,6 +22,7 @@ package com.alibaba.himarket.service.hichat.memory;
 import com.alibaba.himarket.entity.ChatMemory;
 import com.alibaba.himarket.repository.ChatMemoryRepository;
 import com.alibaba.himarket.utils.JsonUtil;
+import io.agentscope.core.state.AgentState;
 import io.agentscope.core.state.AgentStateStore;
 import io.agentscope.core.state.State;
 import java.util.List;
@@ -29,12 +30,16 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class ChatMemoryAgentStateStore implements AgentStateStore {
+
+    private static final String AGENT_STATE_KEY = "agent_state";
 
     private final ChatMemoryRepository chatMemoryRepository;
 
@@ -64,7 +69,7 @@ public class ChatMemoryAgentStateStore implements AgentStateStore {
     public void save(String userId, String sessionId, String key, List<? extends State> values) {}
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public <T extends State> Optional<T> get(
             String userId, String sessionId, String key, Class<T> type) {
         userId = requireText(userId, "userId");
@@ -78,7 +83,27 @@ public class ChatMemoryAgentStateStore implements AgentStateStore {
         if (memory == null) {
             return Optional.empty();
         }
-        return Optional.of(JsonUtil.parse(memory.getMemoryPayload(), type));
+        try {
+            return Optional.of(
+                    Objects.requireNonNull(
+                            JsonUtil.parse(memory.getMemoryPayload(), type),
+                            "chat memory payload must not be blank"));
+        } catch (RuntimeException e) {
+            log.warn(
+                    "Discarding invalid chat memory, sessionId={}, memoryKey={}, stateType={},"
+                            + " errorMessage={}",
+                    sessionId,
+                    key,
+                    type.getName(),
+                    e.getMessage());
+            chatMemoryRepository.deleteByUserIdAndSessionIdAndMemoryKey(userId, sessionId, key);
+            return Optional.empty();
+        }
+    }
+
+    @Transactional
+    public boolean hasAgentState(String userId, String sessionId) {
+        return get(userId, sessionId, AGENT_STATE_KEY, AgentState.class).isPresent();
     }
 
     @Override

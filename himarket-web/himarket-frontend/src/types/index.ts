@@ -329,20 +329,7 @@ export interface IMessageVersion {
   outputTokens?: number;
 }
 
-// @chat-legacy: This interface is no longer used
-// export interface IMcpToolMeta {
-//   toolName: string;
-//   toolNameCn?: string | null;
-//   mcpName: string;
-//   mcpNameCn?: string | null;
-// }
-
 export interface IMcpToolCall {
-  // @chat-legacy: Legacy fields removed - use mcpServerName and arguments instead
-  // toolMeta?: IMcpToolMeta;
-  // inputSchema?: string;
-  // input?: string;
-
   id: string;
   type: string;
   name: string;
@@ -351,17 +338,17 @@ export interface IMcpToolCall {
 }
 
 export interface IMcpToolResponse {
-  // @chat-legacy: Legacy fields removed - use result instead
-  // toolMeta?: IMcpToolMeta;
-  // output?: string;
-  // responseData?: string;
-
   id: string;
   name: string;
   result?: unknown;
 }
 
-export type IChatMessageChunkType = 'ASSISTANT' | 'THINKING' | 'TOOL_CALL' | 'TOOL_RESULT';
+export interface IGeneratedImage {
+  attachmentId: string;
+}
+
+export type IChatMessageChunkType =
+  'ASSISTANT' | 'THINKING' | 'IMAGE' | 'TOOL_CALL' | 'TOOL_RESULT';
 
 export interface IChatMessageChunk {
   type: IChatMessageChunkType;
@@ -370,6 +357,7 @@ export interface IChatMessageChunk {
   name?: string;
   arguments?: unknown;
   result?: unknown;
+  attachmentId?: string;
 }
 
 export interface IModelConversation {

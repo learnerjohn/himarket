@@ -51,6 +51,16 @@ public class LlmChatRequest {
     private boolean rebuildMemory;
 
     /**
+     * Whether thinking is enabled for this invocation
+     */
+    private boolean enableThinking;
+
+    /**
+     * Whether web search is enabled for this invocation
+     */
+    private boolean enableWebSearch;
+
+    /**
      * URI, use this uri to request model
      */
     private URI uri;

@@ -99,6 +99,7 @@ public class ChatContext {
         switch (event.getType()) {
             case ASSISTANT:
             case THINKING:
+            case IMAGE:
             case TOOL_CALL:
             case TOOL_RESULT:
                 if (event.getContent() != null) {

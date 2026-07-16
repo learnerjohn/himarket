@@ -101,6 +101,28 @@ class ChatFormatterTest {
         assertChunk(chunks.get(3), "ASSISTANT", "done");
     }
 
+    @Test
+    void shouldKeepGeneratedImageInMessageOrder() {
+        ChatContext chatContext = new ChatContext(CHAT_ID);
+
+        chatContext.collect(ChatEvent.text(CHAT_ID, "before"));
+        chatContext.collect(
+                ChatEvent.image(
+                        CHAT_ID,
+                        ChatEvent.ImageContent.builder().attachmentId("attachment-1").build()));
+        chatContext.collect(ChatEvent.text(CHAT_ID, "after"));
+
+        List<Map<String, Object>> chunks =
+                JsonUtil.parse(chatContext.toResult().getMessageChunks(), new TypeReference<>() {});
+
+        assertEquals(3, chunks.size());
+        assertChunk(chunks.get(0), "ASSISTANT", "before");
+        assertEquals("IMAGE", chunks.get(1).get("type"));
+        assertEquals("attachment-1", chunks.get(1).get("attachmentId"));
+        assertChunk(chunks.get(2), "ASSISTANT", "after");
+        assertEquals("beforeafter", chatContext.toResult().getAnswer());
+    }
+
     private List<ChatEvent> format(AgentEvent event, ChatContext chatContext) {
         List<ChatEvent> events = formatter.format(event, chatContext).collectList().block();
         events.forEach(chatContext::collect);

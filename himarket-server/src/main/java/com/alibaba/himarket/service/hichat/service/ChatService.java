@@ -26,6 +26,7 @@ import com.alibaba.himarket.core.utils.IdGenerator;
 import com.alibaba.himarket.dto.params.chat.CreateChatParam;
 import com.alibaba.himarket.dto.result.chat.LlmInvokeResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
+import com.alibaba.himarket.dto.result.model.ModelConfigResult;
 import com.alibaba.himarket.dto.result.product.ProductRefResult;
 import com.alibaba.himarket.dto.result.product.ProductResult;
 import com.alibaba.himarket.dto.result.product.SubscriptionResult;
@@ -150,11 +151,7 @@ public class ChatService {
             }
         }
 
-        // chat count
-
-        // check edit
-
-        // check once more
+        validateAttachments(param);
     }
 
     public Chat createChat(CreateChatParam param) {
@@ -190,9 +187,10 @@ public class ChatService {
         // Build user msg and history msg list which will be passed to model
         String userId = contextHolder.getUser();
         boolean rebuildMemory = chat.getSequence() != null && chat.getSequence() > 1;
-        boolean memoryExists = chatMemoryAgentStateStore.exists(userId, param.getSessionId());
         List<Msg> historyMsgList =
-                memoryExists && !rebuildMemory
+                !rebuildMemory
+                                && chatMemoryAgentStateStore.hasAgentState(
+                                        userId, param.getSessionId())
                         ? Collections.emptyList()
                         : buildHistoryMsgList(param);
         Msg currentMsg = buildUserMsg(chat);
@@ -279,32 +277,29 @@ public class ChatService {
         }
 
         // 2. Load and process attachments
-        List<ChatAttachmentConfig> attachmentConfigs = chat.getAttachments();
-        if (!CollectionUtils.isEmpty(attachmentConfigs)) {
-            List<String> attachmentIds =
-                    attachmentConfigs.stream()
-                            .map(ChatAttachmentConfig::getAttachmentId)
-                            .filter(Strings::isNotBlank)
-                            .toList();
+        List<String> attachmentIds = getAttachmentIds(chat.getAttachments());
+        if (!attachmentIds.isEmpty()) {
+            Map<String, ChatAttachment> attachments =
+                    chatAttachmentRepository
+                            .findByAttachmentIdInAndUserId(attachmentIds, chat.getUserId())
+                            .stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            ChatAttachment::getAttachmentId,
+                                            attachment -> attachment));
 
-            if (!CollectionUtils.isEmpty(attachmentIds)) {
-                List<ChatAttachment> attachments =
-                        chatAttachmentRepository.findByAttachmentIdIn(attachmentIds);
+            for (String attachmentId : attachmentIds) {
+                ChatAttachment attachment = attachments.get(attachmentId);
+                if (attachment == null
+                        || attachment.getData() == null
+                        || attachment.getData().length == 0) {
+                    continue;
+                }
 
-                for (ChatAttachment attachment : attachments) {
-                    if (attachment == null
-                            || attachment.getData() == null
-                            || attachment.getData().length == 0) {
-                        continue;
-                    }
-
-                    // Process attachment based on type
-                    if (attachment.getType() == ChatAttachmentType.TEXT) {
-                        buildTextContent(attachment, textContent);
-                    } else {
-                        // IMAGE, AUDIO, VIDEO
-                        buildMediaContent(attachment, contentBlocks);
-                    }
+                if (attachment.getType() == ChatAttachmentType.TEXT) {
+                    buildTextContent(attachment, textContent);
+                } else {
+                    buildMediaContent(attachment, contentBlocks);
                 }
             }
         }
@@ -322,6 +317,37 @@ public class ChatService {
         } else {
             return Msg.builder().role(MsgRole.USER).content(contentBlocks).build();
         }
+    }
+
+    private void validateAttachments(CreateChatParam param) {
+        List<String> attachmentIds = getAttachmentIds(param.getAttachments());
+        if (attachmentIds.isEmpty()) {
+            return;
+        }
+
+        Map<String, ChatAttachment> attachments =
+                chatAttachmentRepository
+                        .findByAttachmentIdInAndUserId(attachmentIds, contextHolder.getUser())
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ChatAttachment::getAttachmentId, attachment -> attachment));
+        for (String attachmentId : attachmentIds) {
+            if (!attachments.containsKey(attachmentId)) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Chat attachment", attachmentId);
+            }
+        }
+    }
+
+    private List<String> getAttachmentIds(List<ChatAttachmentConfig> attachments) {
+        if (CollectionUtils.isEmpty(attachments)) {
+            return Collections.emptyList();
+        }
+        return attachments.stream()
+                .map(ChatAttachmentConfig::getAttachmentId)
+                .filter(Strings::isNotBlank)
+                .distinct()
+                .toList();
     }
 
     private void buildTextContent(ChatAttachment attachment, StringBuilder textContent) {
@@ -406,19 +432,19 @@ public class ChatService {
     }
 
     private LlmService getLlmService(InvokeModelParam param) {
-        // Get supported protocols from model config (not null)
-        List<String> aiProtocols =
-                param.getProduct().getModelConfig().getModelAPIConfig().getAiProtocols();
+        ModelConfigResult.ModelAPIConfig modelAPIConfig =
+                param.getProduct().getModelConfig().getModelAPIConfig();
 
-        // Find first matched service by protocol
         return llmServices.stream()
-                .filter(service -> aiProtocols.stream().anyMatch(service::match))
+                .filter(service -> service.match(modelAPIConfig))
                 .findFirst()
                 .orElseThrow(
                         () ->
                                 new IllegalArgumentException(
-                                        "No supported LLM service found for protocols: "
-                                                + aiProtocols));
+                                        "No supported LLM service found for model category: "
+                                                + modelAPIConfig.getModelCategory()
+                                                + ", protocols: "
+                                                + modelAPIConfig.getAiProtocols()));
     }
 
     /**
@@ -433,13 +459,12 @@ public class ChatService {
         String sessionId = event.getSessionId();
 
         try {
-            log.info("Cleaning chat records and attachments, sessionId={}", sessionId);
+            log.info("Cleaning chat records and memory, sessionId={}", sessionId);
 
-            // Delete all chat records
             chatRepository.deleteAllBySessionId(sessionId);
             chatMemoryAgentStateStore.deleteBySessionId(sessionId);
 
-            log.info("Cleaned chat records and attachments, sessionId={}", sessionId);
+            log.info("Cleaned chat records and memory, sessionId={}", sessionId);
         } catch (Exception e) {
             log.error(
                     "Failed to cleanup chat records, sessionId={}, errorMessage={}",
